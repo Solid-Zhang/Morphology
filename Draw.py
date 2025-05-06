@@ -7,18 +7,20 @@
 """
 import math
 import os
-
+import seaborn as sns
+import pandas as pd
 from osgeo import gdal,ogr
 import matplotlib.pyplot as plt
+from matplotlib import cm
 import numpy as np
 import json
 import csv
 import rasterio
-import plotly.graph_objects as go
 import Raster
 from Judge_by_Surface_Morphology import *
-from scipy import interpolate
 import os
+import geopandas as gpd
+import rasterio
 
 def color(r,g,b):
     return (r/255,g/255,b/255)
@@ -175,8 +177,9 @@ def check_slope(slope_file):
 
 
 # 20240821
-def draw_3D_surface(DEM_file):
-
+def draw_3D_surface(DEM_file,outfile=r''):
+    # if os.path.exists(outfile):
+    #     return
 
     # Load DEM data
     dem_data = Raster.get_raster(DEM_file)
@@ -185,7 +188,10 @@ def draw_3D_surface(DEM_file):
     max_H = max(dem_data[dem_data > 0])
     dem_data[dem_data == max_H] = np.nan
     dem_data[dem_data<=min_H] = np.nan
-    print(min(dem_data[dem_data>0]))
+    try:
+        print(min(dem_data[dem_data>0]))
+    except:
+        return
     # Create grid of coordinates
     x = np.arange(dem_data.shape[1])
     y = np.arange(dem_data.shape[0])
@@ -211,10 +217,74 @@ def draw_3D_surface(DEM_file):
     ax.view_init(elev=18, azim=140)
     ax.axis('off')
 
-
-
+    # plt.savefig(outfile)
+    # plt.close()
     plt.show()
+def draw_3D_surface_longest_stream(DEM_file,stream_file,outfile=r''):
+    # if os.path.exists(outfile):
+    #     return
 
+    # Load DEM data
+    dem_data = Raster.get_raster(DEM_file)
+    dem_data = np.array(dem_data,np.float64)
+    min_H = min(dem_data[dem_data>0])
+    max_H = max(dem_data[dem_data > 0])
+    dem_data[dem_data == max_H] = np.nan
+    dem_data[dem_data<=min_H] = np.nan
+
+
+    s_data = Raster.get_raster(stream_file)
+    s_data = np.array(s_data,np.float64)
+    row,col = s_data.shape
+    for i in range(row):
+        for j in range(col):
+            if s_data[i,j] != 1:
+                continue
+            s_data[i,j] += dem_data[i,j]+1
+            for k in range(8):
+                next_cell = (i+dmove[k][0],j+dmove[k][1])
+                if 0 <= next_cell[0] < row and 0 <= next_cell[1] < col:
+                    if dem_data[next_cell[0],next_cell[1]] == np.nan:
+                        continue
+                    if s_data[next_cell[0],next_cell[1]] == 0:
+                        s_data[next_cell[0],next_cell[1]] += dem_data[next_cell[0],next_cell[1]]+1+1
+
+    s_data[s_data==0] = np.nan
+    try:
+        print(min(dem_data[dem_data>0]))
+    except:
+        return
+    # Create grid of coordinates
+    x = np.arange(dem_data.shape[1])
+    y = np.arange(dem_data.shape[0])
+    x, y = np.meshgrid(x, y)
+    z = dem_data
+
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Plot the surface
+    surf = ax.plot_surface(x,y,z,cmap='rainbow', edgecolor='k',alpha = 0.6)
+    # ax.contourf(x,y,z,  # 传入数据
+    #             zdir='z'  # 设置为z轴为等高线的不变轴
+    #             , offset=min_H  # 映射位置在z=-1处
+    #             , cmap=plt.get_cmap('rainbow')  # 设置颜色为彩虹色
+    #             )  # 绘制图像的映射，就是等高线图。
+
+    # 设置边界的填充颜色和透明度
+    surf.set_edgecolors('k')  # 设置边界颜色为黑色
+    ax.set_facecolor('white')  # 设置图形背景颜色为白色/
+    # 调整视角
+    ax.view_init(elev=18, azim=140)
+    ax.axis('off')
+    # river_x, river_y = np.where(s_data == 1)  # 找到河网的位置
+    # z1 = s_data
+    ax.plot_surface(x, y,s_data, color='blue')
+
+    # plt.savefig(outfile)
+    # plt.close()
+    plt.show()
 def Draw_profile():
     #绘制最长流路的坡面
     # 构建研究区最长流路
@@ -269,7 +339,7 @@ def Draw_profile_hillslope():
     # 构建研究区最长流路
 
     # 读取incision数据
-    incision_file = r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\Acc2000\Result\incision.csv'
+    incision_file = r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\result\incision.csv'
     with open(incision_file,'r') as f:
         con = csv.reader(f)
 
@@ -289,9 +359,9 @@ def Draw_profile_hillslope():
     print(len(hillslope_ids))
 
     stream = Raster.get_raster(
-        r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\Acc2000\Stream_link.tif')
+        r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\Stream2000_link.tif')
     s_proj, s_geo, s_nodata = Raster.get_proj_geo_nodata(
-        r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\Acc2000\Stream_link.tif')
+        r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\Stream2000_link.tif')
     dem = Raster.get_raster(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\DEM.tif')
     dir = Raster.get_raster(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\Dir.tif')
     _, _, dir_nodata = Raster.get_proj_geo_nodata(
@@ -318,7 +388,7 @@ def Draw_profile_hillslope():
             plt.ylim(min(y) - 100, max(y) + 100)
 
             # plt.xticks([])
-            plt.savefig(os.path.join(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\Acc2000\Result\Hillslope',str(sid)+'.jpg'))
+            plt.savefig(os.path.join(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\result\Hillslope',str(sid)+'.jpg'))
             plt.close()
     # plt.show()
 
@@ -339,7 +409,7 @@ def Draw_profile_hillslope():
             plt.xlim(min(x)-100, max(x)+100)
             plt.ylim(min(y)-100, max(y)+100)
             plt.savefig(
-                os.path.join(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\Acc2000\Result\Watershed',
+                os.path.join(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\result\Watershed',
                              str(sid) + '.jpg'))
             plt.close()
             # plt.xticks([])
@@ -366,9 +436,108 @@ def Draw_profile_hillslope():
     #         # plt.xticks([])
     # plt.show()
 
-def density(watershed_file,stream_link_file,DEM_file,incision_file,Name,venu):
-    # 计算河网密度
+def sbatch_get_dem():
+    Dem_file = r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\DEM.tif'
+    watershed_file = r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\Watershed.tif'
+    venu = r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\result\dem'
+    if not os.path.exists(venu):
+        os.mkdir(venu)
+        os.chmod(venu,0o777)
+    dem = Raster.get_raster(Dem_file)
+    proj,geo,nodata = Raster.get_proj_geo_nodata(Dem_file)
+    watershed = Raster.get_raster(watershed_file)
+    proj,geo,w_nodata = Raster.get_proj_geo_nodata(watershed_file)
 
+    ids = np.unique(watershed[watershed != w_nodata])
+    print(len(ids))
+    for new_id in ids:
+
+        # print(new_id)
+        mask = np.where(watershed == new_id)
+        # print(mask)
+        minX = min(mask[0])
+        minY = min(mask[1])
+        maxX = max(mask[0])
+        maxY = max(mask[1])
+        # print(minX,minY,maxX,maxY)
+
+        dem_mask = dem[minX:maxX+1,minY:maxY+1].copy()
+        watershed_mask = watershed[minX:maxX+1,minY:maxY+1].copy()
+        dem_mask[watershed_mask!=new_id] = nodata
+
+        new_geo = (geo[0]+minY*geo[1],geo[1],geo[2],geo[3]+minX*geo[5],geo[4],geo[5])
+        dem_path = os.path.join(venu,'dem_'+str(new_id)+'.tif')
+        Raster.save_raster(dem_path,dem_mask,proj,new_geo,gdal.GDT_Float32,nodata)
+        # break
+
+def sbatch_draw_3D(venu,outvenu):
+
+    files = os.listdir(venu)
+    for file in files:
+        if file.split('.')[1] !='tif':
+            continue
+        file_path = os.path.join(venu,file)
+
+        outfile = os.path.join(outvenu,file)
+        draw_3D_surface(file_path,outfile)
+
+def get_longest_stream(dem_file,fdir_file,out_file):
+
+    dem = Raster.get_raster(dem_file)
+    proj,geo,d_nodata = Raster.get_proj_geo_nodata(dem_file)
+    fdir = Raster.get_raster(fdir_file)
+    row,col = dem.shape
+    flag = False
+    for i in range(row):
+        for j in range(col):
+            now_dir = fdir[i,j]
+            if dem[i,j] == d_nodata:
+                continue
+            next_cell = (i+dmove_dic[now_dir][0],j+dmove_dic[now_dir][1])
+            if 0<= next_cell[0] <row and 0<= next_cell[1] <col:
+                continue
+                # if fdir[next_cell[0],next_cell[1]] == -2147483647:
+            flag = True
+            Head = (i, j, 0)
+            break
+        if flag:
+            break
+
+    max_cell = [Head[0],Head[1],Head[2]]
+    pop_cells = [Head]
+    while pop_cells:
+        pop_cell = pop_cells.pop()
+        up_cells = get_rever_D8(fdir, pop_cell[0], pop_cell[1], 255)
+        for up_cell in up_cells:
+            pop_cells.append((up_cell[0], up_cell[1], pop_cell[2] + 1))
+
+            if max_cell[2] < pop_cell[2] + 1:
+                max_cell = [up_cell[0], up_cell[1], pop_cell[2] + 1]
+
+    longest = np.zeros((row,col))
+    pop_cells = [max_cell]
+    while pop_cells:
+        pop_cell = pop_cells.pop()
+        longest[pop_cell[0],pop_cell[1]] = 1
+        now_dir = fdir[pop_cell[0],pop_cell[1]]
+        if now_dir not in dmove_dic:
+            continue
+        next_cell = (pop_cell[0] + dmove_dic[now_dir][0], pop_cell[1] + dmove_dic[now_dir][1])
+        if 0 <= next_cell[0] < row and 0 <= next_cell[1] < col:
+            pop_cells.append(next_cell)
+
+    Raster.save_raster(out_file,longest,proj,geo,gdal.GDT_Byte,0)
+
+
+
+
+
+def density(Name,basevenu):
+    venu = os.path.join(basevenu,'venu')
+    # 计算河网密度
+    size = 10
+    watershed_file = os.path.join(basevenu,"watershed.tif")
+    DEM_file = os.path.join(basevenu,"Filleddem.tif")
     watershed = Raster.get_raster(watershed_file)
     proj,geo,w_nodata = Raster.get_proj_geo_nodata(watershed_file)
 
@@ -387,7 +556,8 @@ def density(watershed_file,stream_link_file,DEM_file,incision_file,Name,venu):
             # if stream[i,j] != s_nodata:
             #     stream_area_dic.setdefault(stream[i,j],[]).append((i,j,DEM[i,j]))
             if watershed[i,j] != w_nodata:
-                watershed_area += geo[1]*geo[1]/1000000
+                watershed_area += 1
+    watershed_area /= 10000
 
 
 
@@ -395,13 +565,15 @@ def density(watershed_file,stream_link_file,DEM_file,incision_file,Name,venu):
     y = []
     x1 = []
     y1 = []
-    for k in range(1,7):
+    for k in range(0,26,5):
+        x1.append(k/100)
         stream_area_dic = {}
-        stream_file = os.path.join(venu,'Result1'+str(k),'modified_link.tif')
+        stream_file = os.path.join(venu,str(k),'modified_link.tif')
         Stream = Raster.get_raster(stream_file)
         proj, geo, s_nodata = Raster.get_proj_geo_nodata(stream_file)
 
         row,col = Stream.shape
+
         for i in range(row):
             for j in range(col):
                 if Stream[i,j] != s_nodata:
@@ -413,78 +585,42 @@ def density(watershed_file,stream_link_file,DEM_file,incision_file,Name,venu):
             cells.sort(key=lambda x: x[2])
             temp_len = 0
             if len(cells) == 1:
-                temp_len += geo[1] / 1000
+                temp_len += size/1000
             else:
                 for i in range(len(cells) - 1):
                     start_cell = cells[i]
                     end_cell = cells[i + 1]
                     if (start_cell[0] - end_cell[0] == 0) or (start_cell[1] - end_cell[1] == 0):
-                        temp_len += geo[1] * math.sqrt(2) / 1000
+                        temp_len += size * math.sqrt(2) / 1000
                     else:
-                        temp_len += geo[1] / 1000
+                        temp_len += size / 1000
             stream_len += temp_len
-        y.append(stream_len / watershed_area)
+        y.append(stream_len / watershed_area)  # 河网密度
         y1.append(len(stream_area_dic))
 
-    #
-    #
-    # # print(watershed_area)
-    # # print(stream_len)
-    # # print(stream_len/watershed_area)
-    #
-    # with open(incision_file,'r') as f:
-    #     reader = csv.reader(f)
-    #     n = 0
-    #     con =[]
-    #     for i in reader:
-    #         if n>0:
-    #             con.append((float(i[0]),float(i[1])))
-    #         n += 1
-    # # 计算不同阈值下的河网密度
-    # x = []
-    # y = []
-    # x1 = []
-    # y1 = []
-    # incison_list = []
-    # for incision_threshold in range(-20,80,5):
-    #     x.append(incision_threshold/100)
-    #     stream_len1 = stream_len
-    #     hillslope_num = 0
-    #     temp_incision = []
-    #     for cell in con:
-    #         if cell[1]<incision_threshold/100:
-    #             stream_len1 -= stream_length_dic[cell[0]]
-    #             hillslope_num += 1
-    #             temp_incision.append(cell[1])
-    #     y.append(stream_len1/watershed_area)
-    #     x1.append(hillslope_num)
-    #     y1.append(65-hillslope_num)
-    #     incison_list.append(temp_incision)
-
+    # print(x1,y1)
+    # print(x1,y)
     # 绘制河网密度图
-    venu = r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\论文\图\草图\Figure7'
-    density_save_path = os.path.join(venu,Name+'_density.svg')
-    f = interpolate.interp1d(x,y, kind='quadratic')
-    xNew = np.linspace(min(x), max(x), 1000)
-    yNew = f(xNew)
+    # venu = r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\德克萨斯丘陵'
+    density_save_path = os.path.join(basevenu,Name+'_density.svg')
     plt.figure(figsize=(5, 4))
-    plt.plot(x,y,zorder=1)
-    plt.scatter(x, y)
+    plt.plot(x1,y,zorder=1)
+    plt.scatter(x1, y)
     plt.savefig(density_save_path)
     # plt.show()
     plt.close()
 
     # 绘制hillslope和watershed的数量
-    number_save_path = os.path.join(venu,Name+'_number.svg')
-    plt.figure(figsize=(5, 4))
-    # plt.scatter(x, x1,color=color(250,127,111))
-    # plt.plot(x,x1,color=color(250,127,111))
-
-    plt.scatter(x,y1,color=color(130,176,210))
-    plt.plot(x, y1, color=color(130,176,210))
-    plt.savefig(number_save_path)
-    # plt.show()
-    plt.close()
+    # number_save_path = os.path.join(venu,Name+'_number.svg')
+    # plt.figure(figsize=(5, 4))
+    # # plt.scatter(x, x1,color=color(250,127,111))
+    # # plt.plot(x,x1,color=color(250,127,111))
+    #
+    # plt.scatter(x,y1,color=color(130,176,210))
+    # plt.plot(x, y1, color=color(130,176,210))
+    # plt.savefig(number_save_path)
+    # # plt.show()
+    # plt.close()
 
     # # 绘制误差棒
     # errorbar_save_path = os.path.join(venu,Name+'_error.svg')
@@ -494,57 +630,533 @@ def density(watershed_file,stream_link_file,DEM_file,incision_file,Name,venu):
     # # plt.show()
     # plt.savefig(errorbar_save_path)
 
+
+# ##################### 热图绘制:河网阈值+incision index ##########################
+def heapmap_cosis(c_valid_file,outVenu):
+    """
+    绘制kappa热图
+    :param c_valid_file:
+    :return:
+    """
+    # [streamArea, NHDArea, TP, redundant, notcheck]
+    data = np.zeros((4000,120))
+    minValue = 100
+    onotchecks = {}
+    with open(c_valid_file,'r') as f:
+        reader = csv.reader(f)
+        for i in reader:
+            # x = int(float(i[0])/50-2)   # mssi:-70
+            # x = int(float(i[0])/50-2)   # dkss:-60
+            # x = int(float(i[0]) / 50 - 2)  # klld: -2
+            x = int(float(i[0]) / 50 - 2)  # ablq: -20
+
+            y = int(float(i[1])) + 60
+            # [TN, FP, FN, TP]
+            StreamArea = int(float(i[2]))
+            NHDArea = int(float(i[3]))
+            TP = int(float(i[4]))
+            redundant = int(float(i[5]))
+            notcheck = int(float(i[6]))
+
+            if x not in onotchecks:
+                onotchecks[x] = notcheck
+
+            ostreamArea = int(float(i[7]))
+            OTPs = int(float(i[8]))
+            oredundant = int(float(i[9]))
+
+            if StreamArea == 0 :
+                continue
+
+
+            OA_rate = TP/NHDArea
+            redundant_rate = redundant/StreamArea
+
+            notcheck_rate = notcheck/NHDArea
+            cosis_rate = 1/(redundant_rate+notcheck_rate)#TP/(redundant + notcheck+TP)
+            CSI = TP/(StreamArea+NHDArea - TP)#TP / (redundant + notcheck + TP)
+
+            # # 混淆矩阵
+            # confusion_matrix = np.array([[0, redundant_rate], [notcheck_rate, OA_rate]])
+            # # 总样本数
+            # total = np.sum(confusion_matrix)
+            # # 观察一致性
+            # po = np.trace(confusion_matrix) / total
+            # # 每个类别的边际概率
+            # row_marginals = np.sum(confusion_matrix, axis=1) / total
+            # col_marginals = np.sum(confusion_matrix, axis=0) / total
+            # # 预期一致性
+            # pe = np.sum(row_marginals * col_marginals)
+            # # 计算 Kappa
+            # Kappa = (po - pe) / (1 - pe)
+            #
+            # precision = TP/(TP+redundant)
+            # recall = TP/(TP+notcheck)
+            # F1 = 2*(precision*recall)/(precision+recall)
+            #
+            # # 剔除的正确冗余和误判TP的调和F1-score
+            # correct = (oredundant - redundant)/(notcheck + 1)
+            # incorrect = (OTPs - TP)/(notcheck + 1)
+            # F1_scroe = 2*(correct * incorrect) / (1 + correct + incorrect)
+            #
+            # # 损失比
+            M1 = ostreamArea - StreamArea - notcheck + onotchecks[x]
+            N1 = M1 + notcheck
+            O1 = M1/(1+N1)
+            P1 = notcheck/(1+N1)
+            loss = O1/(0.0001+P1)
+
+            # 数量CSI
+            NumCSI = TP/(NHDArea+redundant+notcheck)
+
+
+            data[x,y] = NumCSI
+
+            minValue = min(minValue,cosis_rate)
+            # print(i)
+        f.close()
+    # data[data == 0] = minValue
+    # 数据标准化到0-1范围
+    from sklearn.preprocessing import MinMaxScaler
+    scaler = MinMaxScaler()
+    # normalized_data = scaler.fit_transform(data)
+    # normalized_data[data == 0] = np.nan
+
+    # 构造连续的色带 (选择 'viridis' 或其他 colormap)
+    # cmap = cm.get_cmap('coolwarm', 40)  # 生成 n_curves 个颜色
+
+    from matplotlib.colors import LinearSegmentedColormap
+    # 定义从浅蓝到深蓝的渐变色带
+    colors = ["lightblue", "blue"]  # 浅蓝到深蓝
+    cmap = LinearSegmentedColormap.from_list("blue_gradient", colors, N=8)
+    # 绘制平均趋势图
+    from scipy.interpolate import interp1d, CubicSpline
+    max_x = []
+    max_y = []
+
+    x_low = []  # 第一个高于首数值的incision
+    x_high = []  # 最后一个高于首数值的incision
+    for k in range(7,8): # 20  albq: 0-8    mssi:10-1900  dkss:0-8  klld:5
+
+        # X = range(80)  #   dkss:40
+        # Y = data[k,20:100]      # dkss:20-60
+
+        X = range(100)  # ablq: 55
+        Y = data[k, 10:110]  # ablq: 20-75
+
+        # X = range(80)  #  mssi:100
+        # Y = data[k, 40:120]  #  mssi:0-100
+
+        # X = range(80)  # klld: 55
+        # Y = data[k, 20:100]  # klld: 20-95
+        if sum(Y) == 0:
+            continue
+        X = np.array(X)
+
+
+
+
+        data_array = np.array(Y, dtype='float64')  # 转换为浮点数类型
+        # 替换 NaN 为 0
+        data_array[np.isnan(data_array)] = 0
+        # 转回列表
+        converted = data_array.tolist()
+
+        x_new = np.linspace(X.min(), X.max(), 1000)
+        # 三次样条插值
+        cubic_spline = CubicSpline(X, Y)
+        y_spline = cubic_spline(x_new)
+        # plt.plot(x_new,y_spline, label=str(500 * (k + 1) * 100 / 1000000), linewidth=1)
+        maxvalue = Y.max()
+        index = converted.index(maxvalue)
+        # if (index-20)/100 in max_y:
+        #     continue
+        max_x.append((100 + k * 50) * 100 / 1000000)
+        max_y.append((index-20)/100)
+        # print((index-20)/100)
+
+        firstValue = converted[0]
+        for kk in range(0,len(converted)):
+            if converted[kk] >= firstValue:
+                x_low.append((kk-20)/100)
+                break
+        for kk in range(len(converted)-1,-1,-1):
+            if converted[kk] >= firstValue:
+                x_high.append((kk-20)/100)
+                break
+        print(max_x,x_low)
+        # plt.plot(x_new,y_spline, label=str((100 + k * 50) * 100 / 1000000), linewidth=2,color=(54 / 255, (200 - (k) * 10) / 255, 255 / 255))  # ablq:1000
+        # plt.plot(x_new,y_spline,label = str((100+k*50)*100/1000000),linewidth = 2 ,color = (54/255,(200-(k)*10)/255,255/255) )   #  dkss:3000
+        # plt.plot(x_new,y_spline, label=str((100 + k * 50) * 100 / 1000000), linewidth=2,color=(54 / 255, (200 - (k) * 30) / 255, 255 / 255))  # klld:100
+        # plt.plot(x_new,y_spline, label=str((100 + k * 50) * 100 / 1000000), linewidth=2,color=(54 / 255, (200 - (k-10) * 1) / 255, 255 / 255))  #   mssi:3500
+
+        # max_x.append((100 + k * 50) * 100 / 1000000)
+        # max_y.append((index - 20) / 100)
+        # plt.scatter(index, maxvalue, color='r')
+        # plt.plot(X,converted,label = str((3000+k*50)*100/1000000),linewidth = 2 ,color = (54/255,(200-(k)*30)/255,255/255) )   #  dkss:3000
+        # plt.plot(X, converted, label=str((3500 + k * 50) * 100 / 1000000), linewidth=2,color=(54 / 255, (200 - (k) * 3) / 255, 255 / 255))  #   mssi:3500
+        # plt.plot(X, converted, label=str((100 + k * 50) * 100 / 1000000), linewidth=2,color=(54 / 255, (200 - (k) * 10) / 255, 255 / 255))  # ablq:1000
+        # plt.plot(X, converted, label=str((100 + k * 50) * 100 / 1000000), linewidth=2,color=(54 / 255, (200 - (k-3) * 30) / 255, 255 / 255))  # klld:100
+    # 设置x轴刻度标签为字符型
+
+    # dkss
+    # x_labels = [str((i - 40)/100) for i in range(0, 81, 20)]
+    # plt.xticks([i for i in range(0, 81, 20)], x_labels)  # [1, 2, 3] 对应箱线图的位置
+
+    # mssi
+    # x_labels = [str(i - 60) for i in range(0, 101, 20)]
+    # plt.xticks([i for i in range(0, 101, 20)], x_labels)  # [1, 2, 3] 对应箱线图的位置
+
+    # ablq
+    # x_labels = [str((i - 40)/100) for i in range(0, 81, 20)]
+    # plt.xticks([i for i in range(0, 81, 20)], x_labels)  # [1, 2, 3] 对应箱线图的位置
+
+    # mssi
+    # x_labels = [str((i - 20)/100) for i in range(0, 81, 20)]
+    # plt.xticks([i for i in range(0, 81, 20)], x_labels)  # [1, 2, 3] 对应箱线图的位置
+
+
+    # klld
+    # x_labels = [str((i - 40)/100) for i in range(0, 81, 20)]
+    # plt.xticks([i for i in range(0, 81, 20)], x_labels)  # [1, 2, 3] 对应箱线图的位置
+    # plt.tick_params(axis='both', which='major', labelsize=12)  # 设置x轴和y轴的主刻度标签大小
+
+    # plt.legend(title=r'$Accmulation\ value\  / \ km^2$',title_fontsize=10,fontsize=10)
+    # plt.ylabel('CSI',fontsize = 14)
+    # plt.xlabel('incision index',fontsize = 14)
+    # plt.show()
+    # # plt.savefig(os.path.join(outVenu, "cosis_line.svg"))
+    # plt.close()
+    # 进行线性拟合
+    max_x1 = [(i-50) / 100 for i in range(0, 100, 1)]
+    max_y1 = data[7, 10:110]  # ablq: 20-75
+    max_x = [(i)/100 for i in range(3, 40, 1)]
+    max_y = data[7, 63:100]  # ablq: 20-75
+    # 定义一个对数函数形式
+    def log_func(x, a, b,d):
+        return a * x *x + b*x  +d
+
+        # return a * np.log(b * x + c) + d
+
+    from scipy.optimize import curve_fit
+    # # 使用curve_fit拟合数据
+    # print(max_x,max_y)
+    # params, covariance = curve_fit(log_func,np.array(max_x),np.array(max_y), maxfev=10000)
+    # print(params,covariance)
+    # # 获取拟合参数
+    # a, b ,d= params
+    # # print(f"拟合参数: a={a}, b={b}, c={c}, d={d}")
+    # #
+    # # # 生成拟合曲线
+    # y_fit = log_func(np.array(max_x), *params)
+    # # 计算残差
+    # residuals = np.array(max_y) - y_fit
+    # # 计算R²
+    # y_mean = np.mean(np.array(max_y))  # 真实值的平均值
+    # ss_total = np.sum((np.array(max_y) - y_mean) ** 2)  # 总平方和
+    # ss_residual = np.sum((np.array(max_y) - y_fit) ** 2)  # 残差平方和
+    # r_squared = 1 - (ss_residual / ss_total)
+    # print(r_squared)
+    # # 手动计算 MSE
+    # mse_manual = np.mean((np.array(max_y) - y_fit) ** 2)
+    # print(f'MSE (manual): {mse_manual}')
+    #
+    # # 手动计算 RMSE
+    # rmse_manual = np.sqrt(mse_manual)
+    # print(f'RMSE (manual): {rmse_manual}')
+
+
+    # # ablq
+    # plt.text(-0.3,0.23,r'$R^2:{:.3f}$'.format(r_squared))
+    # plt.text(-0.3, 0.19, r'$RMSE:{:.3f}$'.format(rmse_manual))
+    # plt.text(-0.3, 0.27, r'$y = {:.2f}*x^2+{:.2f}*x+{:.2f},x>0$'.format(a, b,d))
+
+    # dkss
+    # plt.text(0.015, 0.26, r'$R^2:{:.2f}$'.format(r_squared))
+    # plt.text(0.015, 0.25, r'$RMSE:{:.3f}$'.format(rmse_manual))
+    # plt.text(0.015, 0.27, r'$y = {:.2f}*x+{:.2f}$'.format(a, b))
+
+    # klld
+    # plt.text(0.0125,0.03,r'$R^2:{:.2f}$'.format(r_squared))
+    # plt.text(0.0125, 0.01, r'$RMSE:{:.3f}$'.format(rmse_manual))
+    # plt.text(0.0125, 0.05, r'$y = {:.2f}*x+{:.2f}$'.format(a,b))
+
+    # mssi
+    # plt.text(0.15,0,r'$R^2:{:.2f}$'.format(r_squared))
+    # plt.text(0.15, -0.05, r'$RMSE:{:.3f}$'.format(rmse_manual))
+    # plt.text(0.15, 0.05, r'$y = {:.2f}*x+{:.2f}$'.format(a, b))
+
+    plt.plot([0, 0], [0.33, 0.5], linestyle='-.', color='grey')
+    plt.plot([0.25, 0.25], [0.33, 0.5], linestyle='-.', color='grey')
+    plt.plot([-0.3, 0.4], [0.4, 0.4], linestyle='-.', color='grey')
+    plt.scatter(max_x1,max_y1,s = 14,edgecolors='black',facecolors='none')
+    plt.xticks([-0.6,-0.4,-0.2,0,0.2,0.4,0.6])
+    plt.ylabel('CSI', fontsize=14)
+    plt.xlabel('Incision index', fontsize=14)
+    print(max_x,x_low)
+    # plt.plot(max_x, y_fit, color='red', label='Fitted line',linestyle = '-')
+
+
+    # plt.plot(max_x,x_low,linestyle = '-')
+    # plt.plot(max_x, x_high, linestyle='-')
+    plt.show()
+
+    # # 绘制残差图
+    # plt.scatter(max_x, residuals, color='red', label='Residuals')
+    # plt.axhline(0, color='black', linestyle='--', label='Zero Line')  # 添加零线（基准线）
+    # plt.xlabel('Incision index', fontsize=14)
+    # plt.ylabel('Residuals', fontsize=14)
+    # x_labels = [str(i / 100) for i in range(0, 41, 10)]
+    # plt.xticks([i/100 for i in range(0, 41, 10)], x_labels)  # [1, 2, 3] 对应箱线图的位置
+    # # plt.title('Residuals vs. Incision')
+    # plt.legend()
+    # plt.show()
+
+    # 3. Hartigans' Dip Test
+
+    from scipy.stats import norm
+    import diptest
+    from diptest import diptest
+    def dip_test(data):
+        dip, p_value = diptest(data)
+        return dip, p_value
+
+    # 4. 检验结果
+    single_dip, single_p = dip_test(np.array(max_y))
+    # multi_dip, multi_p = dip_test(max_x)
+
+    print("Single Peak Data: Dip Statistic = {:.4f}, p-value = {:.4f}".format(single_dip, single_p))
+    # print("Multi Peak Data: Dip Statistic = {:.4f}, p-value = {:.4f}".format(multi_dip, multi_p))
+    # 5. 结果解释
+    if single_p > 0.05:
+        print("单峰数据: 无法拒绝单峰假设 (p > 0.05)，可能是单峰。")
+    else:
+        print("单峰数据: 拒绝单峰假设 (p <= 0.05)，可能是多峰。")
+
+def heapmap_cosis1(c_valid_file,outVenu):
+    """
+    绘制kappa热图
+    :param c_valid_file:
+    :return:
+    """
+    # [streamArea, NHDArea, TP, redundant, notcheck]
+    data = np.zeros((4000,120))
+    minValue = 100
+    onotchecks = {}
+    with open(c_valid_file,'r') as f:
+        reader = csv.reader(f)
+        for i in reader:
+            # x = int(float(i[0])/50-2)   # mssi:-70
+            # x = int(float(i[0])/50-2)   # dkss:-60
+            # x = int(float(i[0]) / 50 - 2)  # klld: -2
+            x = int(float(i[0]) / 50 - 2)  # ablq: -20
+
+            y = int(float(i[1])) + 60
+            # [TN, FP, FN, TP]
+            StreamArea = int(float(i[2]))
+            NHDArea = int(float(i[3]))
+            TP = int(float(i[4]))
+            redundant = int(float(i[5]))
+            notcheck = int(float(i[6]))
+
+            if x not in onotchecks:
+                onotchecks[x] = notcheck
+
+            ostreamArea = int(float(i[7]))
+            OTPs = int(float(i[8]))
+            oredundant = int(float(i[9]))
+
+            if StreamArea == 0 :
+                continue
+
+
+            OA_rate = TP/NHDArea
+            redundant_rate = redundant/StreamArea
+
+            notcheck_rate = notcheck/NHDArea
+            cosis_rate = 1/(redundant_rate+notcheck_rate)#TP/(redundant + notcheck+TP)
+            CSI = TP/(StreamArea+NHDArea - TP)#TP / (redundant + notcheck + TP)
+
+            # # 混淆矩阵
+            # confusion_matrix = np.array([[0, redundant_rate], [notcheck_rate, OA_rate]])
+            # # 总样本数
+            # total = np.sum(confusion_matrix)
+            # # 观察一致性
+            # po = np.trace(confusion_matrix) / total
+            # # 每个类别的边际概率
+            # row_marginals = np.sum(confusion_matrix, axis=1) / total
+            # col_marginals = np.sum(confusion_matrix, axis=0) / total
+            # # 预期一致性
+            # pe = np.sum(row_marginals * col_marginals)
+            # # 计算 Kappa
+            # Kappa = (po - pe) / (1 - pe)
+            #
+            # precision = TP/(TP+redundant)
+            # recall = TP/(TP+notcheck)
+            # F1 = 2*(precision*recall)/(precision+recall)
+            #
+            # # 剔除的正确冗余和误判TP的调和F1-score
+            # correct = (oredundant - redundant)/(notcheck + 1)
+            # incorrect = (OTPs - TP)/(notcheck + 1)
+            # F1_scroe = 2*(correct * incorrect) / (1 + correct + incorrect)
+            #
+            # # 损失比
+            # M1 = ostreamArea - StreamArea - notcheck + onotchecks[x]
+            # N1 = M1 + notcheck
+            # O1 = M1/(1+N1)
+            # P1 = notcheck/(1+N1)
+            # loss = O1/(0.0001+P1)
+
+            # 数量CSI
+            NumCSI = TP/(TP+redundant+notcheck)#TP/(NHDArea+redundant+notcheck)
+
+
+            data[x,y] = NumCSI
+
+            minValue = min(minValue,cosis_rate)
+            # print(i)
+        f.close()
+    # data[data == 0] = minValue
+    # 数据标准化到0-1范围
+    from sklearn.preprocessing import MinMaxScaler
+    scaler = MinMaxScaler()
+    # normalized_data = scaler.fit_transform(data)
+    # normalized_data[data == 0] = np.nan
+
+    # 构造连续的色带 (选择 'viridis' 或其他 colormap)
+    # cmap = cm.get_cmap('coolwarm', 40)  # 生成 n_curves 个颜色
+
+    from matplotlib.colors import LinearSegmentedColormap
+    # 定义从浅蓝到深蓝的渐变色带
+    colors = ["lightblue", "blue"]  # 浅蓝到深蓝
+    cmap = LinearSegmentedColormap.from_list("blue_gradient", colors, N=8)
+    # 绘制平均趋势图
+    from scipy.interpolate import interp1d, CubicSpline
+    max_x = []
+    max_y = []
+
+    x_low = []  # 第一个高于首数值的incision
+    x_high = []  # 最后一个高于首数值的incision
+    for k in range(7,8): # 20  albq: 0-8    mssi:10-1900  dkss:0-8  klld:5
+
+        # X = range(80)  #   dkss:40
+        # Y = data[k,20:100]      # dkss:20-60
+
+        X = range(80)  # ablq: 55
+        Y = data[k, 20:100]  # ablq: 20-75
+
+        # X = range(80)  #  mssi:100
+        # Y = data[k, 40:120]  #  mssi:0-100
+
+        # X = range(80)  # klld: 55
+        # Y = data[k, 20:100]  # klld: 20-95
+        if sum(Y) == 0:
+            continue
+        X = np.array(X)
+
+
+
+
+        data_array = np.array(Y, dtype='float64')  # 转换为浮点数类型
+        # 替换 NaN 为 0
+        data_array[np.isnan(data_array)] = 0
+        # 转回列表
+        converted = data_array.tolist()
+
+        x_new = np.linspace(X.min(), X.max(), 1000)
+        # 三次样条插值
+        cubic_spline = CubicSpline(X, Y)
+        y_spline = cubic_spline(x_new)
+        # plt.plot(x_new,y_spline, label=str(500 * (k + 1) * 100 / 1000000), linewidth=1)
+        maxvalue = Y.max()
+        index = converted.index(maxvalue)
+        # if (index-20)/100 in max_y:
+        #     continue
+        max_x.append((100 + k * 50) * 100 / 1000000)
+        max_y.append((index-20)/100)
+        # print((index-20)/100)
+
+        firstValue = converted[0]
+        for kk in range(0,len(converted)):
+            if converted[kk] >= firstValue:
+                x_low.append((kk-20)/100)
+                break
+        for kk in range(len(converted)-1,-1,-1):
+            if converted[kk] >= firstValue:
+                x_high.append((kk-20)/100)
+                break
+        print(max_x,x_low)
+        plt.plot(x_new,y_spline, label=str((100 + k * 50) * 100 / 1000000), linewidth=2,color=(54 / 255, (200 - (k) * 10) / 255, 255 / 255))  # ablq:1000
+        # plt.plot(x_new,y_spline,label = str((100+k*50)*100/1000000),linewidth = 2 ,color = (54/255,(200-(k)*10)/255,255/255) )   #  dkss:3000
+        # plt.plot(x_new,y_spline, label=str((100 + k * 50) * 100 / 1000000), linewidth=2,color=(54 / 255, (200 - (k) * 30) / 255, 255 / 255))  # klld:100
+        # plt.plot(x_new,y_spline, label=str((100 + k * 50) * 100 / 1000000), linewidth=2,color=(54 / 255, (200 - (k-10) * 1) / 255, 255 / 255))  #   mssi:3500
+
+        # max_x.append((100 + k * 50) * 100 / 1000000)
+        # max_y.append((index - 20) / 100)
+        # plt.scatter(index, maxvalue, color='r')
+        # plt.plot(X,converted,label = str((3000+k*50)*100/1000000),linewidth = 2 ,color = (54/255,(200-(k)*30)/255,255/255) )   #  dkss:3000
+        # plt.plot(X, converted, label=str((3500 + k * 50) * 100 / 1000000), linewidth=2,color=(54 / 255, (200 - (k) * 3) / 255, 255 / 255))  #   mssi:3500
+        # plt.plot(X, converted, label=str((100 + k * 50) * 100 / 1000000), linewidth=2,color=(54 / 255, (200 - (k) * 10) / 255, 255 / 255))  # ablq:1000
+        # plt.plot(X, converted, label=str((100 + k * 50) * 100 / 1000000), linewidth=2,color=(54 / 255, (200 - (k-3) * 30) / 255, 255 / 255))  # klld:100
+    # 设置x轴刻度标签为字符型
+
+    # dkss
+    # x_labels = [str((i - 40)/100) for i in range(0, 81, 20)]
+    # plt.xticks([i for i in range(0, 81, 20)], x_labels)  # [1, 2, 3] 对应箱线图的位置
+
+    # mssi
+    # x_labels = [str(i - 60) for i in range(0, 101, 20)]
+    # plt.xticks([i for i in range(0, 101, 20)], x_labels)  # [1, 2, 3] 对应箱线图的位置
+
+    # ablq
+    x_labels = [str((i - 40)/100) for i in range(0, 81, 20)]
+    plt.xticks([i for i in range(0, 81, 20)], x_labels)  # [1, 2, 3] 对应箱线图的位置
+
+    # mssi
+    # x_labels = [str((i - 20)/100) for i in range(0, 81, 20)]
+    # plt.xticks([i for i in range(0, 81, 20)], x_labels)  # [1, 2, 3] 对应箱线图的位置
+
+
+    # klld
+    # x_labels = [str((i - 40)/100) for i in range(0, 81, 20)]
+    # plt.xticks([i for i in range(0, 81, 20)], x_labels)  # [1, 2, 3] 对应箱线图的位置
+    # plt.tick_params(axis='both', which='major', labelsize=12)  # 设置x轴和y轴的主刻度标签大小
+
+    plt.legend(title=r'$Accmulation\ value\  / \ km^2$',title_fontsize=10,fontsize=10)
+    plt.ylabel('CSI',fontsize = 14)
+    plt.xlabel('incision index',fontsize = 14)
+    plt.show()
+    # plt.savefig(os.path.join(outVenu, "cosis_line.svg"))
+    plt.close()
+
+
+
+
 if __name__=='__main__':
 
-    # file=r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\NWEI\沱沱河\基础数据\subbemdding2.json'
-    # Draw_scatter(file)
 
-    # 精度绘制
-    # verification_file=r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\Acc300\valid.csv'
-    # # draw_F1(verification_file)
-    # # draw_verification(verification_file)
-    # slope_file = r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\地形因子\slope1.tif'
-    # check_slope(slope_file)
+    heapmap_cosis(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\论文\图\草图\heatmap\ablq\c_valid_visual_100_500.csv',r'')
 
-
-    # 绘制3D surface
-    # draw_3D_surface(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\曲面\raster\delete\valid_dem\3025.tif')
-
-    # 绘制最长流路的剖面
-    # Draw_profile()
-
-    # 绘制三维地形
-    draw_3D_surface(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\论文\图\草图\valid\3472.tif')
-
+    # Supplent 附图
     # 批量绘制剖面高程图
     # Draw_profile_hillslope()
-
-    # # 计算河网密度、hillslope数量、errorbar
-    # density(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\喀斯特\data\watershed.tif',
-    #         r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\喀斯特\data\streamlink.tif',
-    #         r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\喀斯特\data\DEM.tif',
-    #         r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\喀斯特\data\Result\incision.csv','Kasite')
-
-    # density(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\watershed.tif',
-    #         r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\streamlink.tif',
-    #         r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\DEM.tif',
-    #         r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\Result\incision.csv',
-    #         'Gaoshan',r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data')
-
-    # density(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\水库\data\watershed.tif',
-    #         r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\水库\data\streamlink.tif',
-    #         r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\水库\data\DEM.tif',
-    #         r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\水库\data\Result\incision.csv',
-    #         'servior')
+    # sbatch_get_dem()
+    # sbatch_draw_3D(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\result\dem',
+    #                r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\result\D_profile')
+    # draw_3D_surface(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\result\dem\dem_3234.tif')
+    # get_longest_stream(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\result\dem\dem_3234.tif',
+    #                    r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\result\dir\dir_3234.tif',
+    #                    r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\result\dir\stream_3234.tif')
+    # Supplent 附图主代码
+    # get_longest_stream(
+    # r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\论文\图\草图\valid\3472.tif',
+    # r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\result\dir\dir_3472.tif',
+    # r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\result\dir\stream_3472.tif')
     #
-    # density(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\武镇\data\watershed.tif',
-    #         r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\武镇\data\streamlink.tif',
-    #         r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\武镇\data\Wuzhen_DEM.tif',
-    #         r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\武镇\data\Result\incision.csv',
-    #         'Wuzhen')
+    # draw_3D_surface_longest_stream(
+    #     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\论文\图\草图\valid\3472.tif',
+    #     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\result\dir\stream_3472.tif')
 
-    # !/usr/bin/python3
-    # code-python(3.6)
 
 
     pass

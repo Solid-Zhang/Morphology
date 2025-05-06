@@ -4,14 +4,11 @@ import os
 from osgeo import gdal,ogr
 import numpy as np
 import Raster
-import matplotlib.pyplot as plt
-from matplotlib import pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 import json
 import csv
 import time
-from scipy.spatial.distance import pdist
-import whitebox_workflows
+from multiprocessing import Pool
+
 
 dmove=[(0,1),(1,1),(1,0),(1,-1),(0,-1),(-1,-1),(-1,0),(-1,1)]
 dmove_dic = {1: (0, 1), 2: (1, 1), 4: (1, 0), 8: (1, -1), 16: (0, -1), 32: (-1, -1), 64: (-1, 0), 128: (-1, 1)}
@@ -150,6 +147,8 @@ def Stream_link(Dir_file,Stream_file,Stream_link_file):
             if Stream[i,j] != s_nodata:
 
                 now_dir = Dir[i,j]
+                if now_dir not in dmove_dic:
+                    continue
                 next_cell = (i+dmove_dic[now_dir][0],j+dmove_dic[now_dir][1])
                 if Dir[next_cell[0],next_cell[1]] == d_nodata:
                     node.append((i,j))
@@ -450,7 +449,7 @@ def type_catchment(csv_file,threshold,watershed_file,output_discriminate_file,wa
 
 def modify_river(Dir_file,csv_file,threshold,stream_file,venu,watershed_stream_ids=[]):
     """
-    根据判断的结果修正河网
+    根据判断的结果修正河网。。。。。
     :param csv_file: 计算的embeddeding
     :param threshold:
     :param stream_file:
@@ -549,6 +548,9 @@ def cal_watershed_area(watershed1_file,watershed2_file):
     print(avg_area(watershed2))
 
 def get_basin_embedding(DEM_file,Dir_file,Stream_file,watershed_file,venu,incision_threshold=0.25):
+    if not os.path.exists(venu):
+        os.mkdir(venu)
+        os.chmod(venu,0o777)
 
     # 计算embedding的主程序
     stream=Raster.get_raster(Stream_file)
@@ -562,23 +564,23 @@ def get_basin_embedding(DEM_file,Dir_file,Stream_file,watershed_file,venu,incisi
     # B=A.get_subbemdding()
     # if not os.path.exists(venu):
     #     os.mkdir(venu)
-    # incision_file = os.path.join(venu,'incision.csv')
-    # dic2csv(B,incision_file)
+    incision_file = os.path.join(venu,'incision.csv')
+    # # A.dic2csv(B,incision_file)
     # print(B)
 
 
     # # 2、根据生成的embedding.csv判断subbasin的类型
-    # output_discriminate_file = os.path.join(venu,'Discriminate.tif')
+    output_discriminate_file = os.path.join(venu,'Discriminate.tif')
     # type_catchment(incision_file,incision_threshold,watershed_file,output_discriminate_file)
-    #
-    # # 26721 13230 237
-    # # 3、根据判断的结果修正河网
+
+    # 26721 13230 237
+    # 3、根据判断的结果修正河网
     # modify_river(Dir_file,incision_file,incision_threshold,Stream_file,venu)   # 0.25
 
 
     # 迭代
     watershed_stream_ids = []
-    for _ in range(1):
+    for _ in range(100):
         print('*******************************************',watershed_stream_ids)
         stream_intial = stream.copy()
         stream_intial[stream_intial!=s_nodata] = 1
@@ -611,15 +613,80 @@ def get_basin_embedding(DEM_file,Dir_file,Stream_file,watershed_file,venu,incisi
             break
 
 
+def sbatch_get_basin_embedding(DEM_file,Dir_file,Stream_file,watershed_file,venu):
+    """
+    计算单个河网阈值下的梯度incision index的结果
+    :param DEM_file:
+    :param Dir_file:
+    :param Stream_file:
+    :param watershed_file:
+    :param venu:
+    :return:
+    """
+
+    if not os.path.exists(venu):
+        os.mkdir(venu)
+        os.chmod(venu,0o777)
+    incisioninsexs = range(-60,60,1)
+    for incisioninsex in incisioninsexs:
+        outvenu = os.path.join(venu,str(incisioninsex))
+        try:
+            get_basin_embedding(DEM_file, Dir_file, Stream_file, watershed_file, outvenu, incisioninsex/100)
+        except Exception as e:
+            print(incisioninsex,':',e)
+
+
+def sbatch_get_basin_embedding_combination(basevenu):
+    """
+    批量计算组合阈值下的结果
+    :param basevenu:
+    :return:
+    """
+
+    # 回调函数
+    def callback(result):
+        print(f"Callback received result: {result}")
+
+    thresholds = range(4050,23000,50)
+
+    dirFile = os.path.join(basevenu, 'dir.tif')
+    demFile = os.path.join(basevenu,'Filleddem.tif')
+
+    streamVenu = os.path.join(basevenu, 'Stream')  # 存放梯度河网阈值的结果
+
+    params = []
+    for threshold in thresholds:
+
+        Venu = os.path.join(streamVenu, str(threshold))
+        if not os.path.exists(Venu):
+            continue
+        slinkFile = os.path.join(Venu, 'slink.tif')
+        watershedFile = os.path.join(Venu, 'watershed.tif')
+
+        outvenu = os.path.join(Venu,"venu")
+        if not os.path.exists(outvenu):
+            os.mkdir(outvenu)
+            os.chmod(outvenu,0o777)
+        params.append([demFile,dirFile,slinkFile,watershedFile,outvenu])
+        # sbatch_get_basin_embedding(demFile,dirFile,slinkFile,watershedFile,outvenu)
+
+        print("{:s}计算完成".format(Venu))
+    po = Pool(30)
+    for param in params:
+        po.apply_async(sbatch_get_basin_embedding,(param[0],param[1],param[2],param[3],param[4],),callback=callback)
+    po.close()
+    po.join()
+
 
 if __name__=='__main__':
 
 
     # 察隅Acc=300
-    # get_basin_embedding(r'E:\察隅野外-202311\察隅采样\察隅流域\DEM\DEM.tif',
+    # get_basin_embedding(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\DEM.tif',
     #                       r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\Dir.tif',
-    #                       r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\Acc300\StreamLink.tif',
-    #                       r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\Acc300\Acc300.csv')
+    #                       r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\Stream2000_link.tif',
+    #                       r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\watershed.tif',
+    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\result')
     #
     # cal_watershed_area(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\Acc300\watershed.tif',
     #                    r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\Acc300\modified_watershed.tif')
@@ -767,9 +834,68 @@ if __name__=='__main__':
     #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\watershed.tif',
     #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\Result16', 0.35)
 
-    get_basin_embedding(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\DEM.tif',
-                        r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\Dir.tif',
-                        r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\Acc2000\Stream_link.tif',
-                        r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\Acc2000\watershed.tif',
-                        r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\Acc2000\Result')
+    # get_basin_embedding(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\DEM.tif',
+    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\Dir.tif',
+    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\Acc2000\Stream_link.tif',
+    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\Acc2000\watershed.tif',
+    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\Acc2000\Result')
+
+    # get_basin_embedding(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\密西西比平原\missi_Filleddem.tif',
+    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\密西西比平原\missi_dir.tif',
+    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\密西西比平原\slink.tif',
+    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\密西西比平原\watershed.tif',
+    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\密西西比平原\venu', incision_threshold=0.16)
+
+
+
+    # sbatch_get_basin_embedding(
+        # r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\科罗拉多高原\Filleddem.tif',
+        # r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\科罗拉多高原\dir.tif',
+        # r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\科罗拉多高原\slink.tif',
+        # r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\科罗拉多高原\watershed.tif',
+        # r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\科罗拉多高原\venu')
+
+    # sbatch_get_basin_embedding(
+    #     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\德克萨斯丘陵\Filleddem.tif',
+    #     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\德克萨斯丘陵\dir.tif',
+    #     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\德克萨斯丘陵\slink.tif',
+    #     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\德克萨斯丘陵\watershed.tif',
+    #     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\德克萨斯丘陵\venu')
+
+    # sbatch_get_basin_embedding(
+    #     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\阿巴拉契亚山脉\Filleddem.tif',
+    #     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\阿巴拉契亚山脉\dir.tif',
+    #     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\阿巴拉契亚山脉\slink.tif',
+    #     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\阿巴拉契亚山脉\watershed.tif',
+    #     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\阿巴拉契亚山脉\venu')
+
+    # sbatch_get_basin_embedding(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\密西西比平原\missi_Filleddem.tif',
+    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\密西西比平原\missi_dir.tif',
+    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\密西西比平原\slink.tif',
+    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\密西西比平原\watershed.tif',
+    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\密西西比平原\venu')
+    sbatch_get_basin_embedding(
+        "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/ablq/Filleddem.tif",
+        "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/ablq/dir.tif",
+        "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/ablq/slink.tif",
+        "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/ablq/watershed.tif",
+        "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/ablq/venu")
+    # # sbatch_get_basin_embedding(
+    # #     "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/mssi/Filleddem.tif",
+    # #     "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/mssi/dir.tif",
+    # #     "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/mssi/slink.tif",
+    # #     "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/mssi/watershed.tif",
+    # #     "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/mssi/venu")
+    # sbatch_get_basin_embedding(
+    #     "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/dkss/Filleddem.tif",
+    #     "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/dkss/dir.tif",
+    #     "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/dkss/slink.tif",
+    #     "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/dkss/watershed.tif",
+    #     "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/dkss/venu")
+    # sbatch_get_basin_embedding(
+    #     "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/klld/Filleddem.tif",
+    #     "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/klld/dir.tif",
+    #     "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/klld/slink.tif",
+    #     "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/klld/watershed.tif",
+    #     "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/klld/venu")
     pass
