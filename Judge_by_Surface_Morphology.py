@@ -447,9 +447,9 @@ def type_catchment(csv_file,threshold,watershed_file,output_discriminate_file,wa
         os.remove(output_discriminate_file)
     Raster.save_raster(output_discriminate_file, arr, proj, geo, gdal.GDT_Float32, -9999)
 
-def modify_river(Dir_file,csv_file,threshold,stream_file,venu,watershed_stream_ids=[]):
+def modify_river(stream_order_file,Dir_file,csv_file,threshold,stream_file,venu,watershed_stream_ids=[]):
     """
-    根据判断的结果修正河网。。。。。
+    根据判断的结果修正河网。。。。。加入河网等级约束
     :param csv_file: 计算的embeddeding
     :param threshold:
     :param stream_file:
@@ -457,18 +457,27 @@ def modify_river(Dir_file,csv_file,threshold,stream_file,venu,watershed_stream_i
     """
     modified_stream_file = os.path.join(venu,'modified_stream.tif')
     modified_link_file = os.path.join(venu, 'modified_link.tif')
-    # 根据阈值修正河网，将坡面并到下游流域
+
+    # 河网等级约束
+    stream_order = Raster.get_raster(stream_order_file)
+    proj,geo,so_nodata = Raster.get_proj_geo_nodata(stream_order_file)
+
+
+
+    # 根据阈值修正河网，将坡面并到下游流域:只剔除incision<threashold and 原始河网等级较低的 河流 (order <= 2)
     # 修正河网
     stream = Raster.get_raster(stream_file)
     proj, geo, nodata = Raster.get_proj_geo_nodata(stream_file)
 
     row, col = stream.shape
     stream_loc = {}
+    stream_order_dic = {}
     watershed_stream_ids_dic = {}  #存放该id所在的某个像元，便于更新id
     for i in range(row):
         for j in range(col):
             if stream[i, j] != nodata:
                 stream_loc.setdefault(stream[i, j], []).append((i, j))
+                stream_order_dic.setdefault(stream[i,j],stream_order[i,j])  # 河流id:河流等级
                 if stream[i,j] in watershed_stream_ids:
                     watershed_stream_ids_dic.setdefault(stream[i,j],[]).append((i,j))
 
@@ -478,7 +487,7 @@ def modify_river(Dir_file,csv_file,threshold,stream_file,venu,watershed_stream_i
         reader=csv.reader(f)
         for i in reader:
             if n>0:
-                if float(i[1])<threshold:
+                if float(i[1])<threshold and stream_order_dic[float(int(i[0]))] <= 3:  #  and stream_order_dic[i[0]] <= 2
                     # 坡面河流
                     stream_loc[float(i[0])]=[]
                 else:
@@ -547,7 +556,7 @@ def cal_watershed_area(watershed1_file,watershed2_file):
     print(avg_area(watershed1))
     print(avg_area(watershed2))
 
-def get_basin_embedding(DEM_file,Dir_file,Stream_file,watershed_file,venu,incision_threshold=0.25):
+def get_basin_embedding(stream_order_file,DEM_file,Dir_file,Stream_file,watershed_file,venu,incision_threshold=0.25):
     if not os.path.exists(venu):
         os.mkdir(venu)
         os.chmod(venu,0o777)
@@ -599,7 +608,7 @@ def get_basin_embedding(DEM_file,Dir_file,Stream_file,watershed_file,venu,incisi
 
         # 26721 13230 237
         # 3、根据判断的结果修正河网
-        watershed_stream_ids = modify_river(Dir_file,incision_file,incision_threshold,Stream_file,venu,watershed_stream_ids)   # 0.25
+        watershed_stream_ids = modify_river(stream_order_file,Dir_file,incision_file,incision_threshold,Stream_file,venu,watershed_stream_ids)   # 0.25
         modified_link_file = os.path.join(venu, 'modified_link.tif')
         stream = Raster.get_raster(modified_link_file)
         s_proj, s_geo, s_nodata = Raster.get_proj_geo_nodata(modified_link_file)
@@ -613,7 +622,7 @@ def get_basin_embedding(DEM_file,Dir_file,Stream_file,watershed_file,venu,incisi
             break
 
 
-def sbatch_get_basin_embedding(DEM_file,Dir_file,Stream_file,watershed_file,venu):
+def sbatch_get_basin_embedding(stream_order_file,DEM_file,Dir_file,Stream_file,watershed_file,venu):
     """
     计算单个河网阈值下的梯度incision index的结果
     :param DEM_file:
@@ -631,7 +640,7 @@ def sbatch_get_basin_embedding(DEM_file,Dir_file,Stream_file,watershed_file,venu
     for incisioninsex in incisioninsexs:
         outvenu = os.path.join(venu,str(incisioninsex))
         try:
-            get_basin_embedding(DEM_file, Dir_file, Stream_file, watershed_file, outvenu, incisioninsex/100)
+            get_basin_embedding(stream_order_file,DEM_file, Dir_file, Stream_file, watershed_file, outvenu, incisioninsex/100)
         except Exception as e:
             print(incisioninsex,':',e)
 
@@ -647,12 +656,13 @@ def sbatch_get_basin_embedding_combination(basevenu):
     def callback(result):
         print(f"Callback received result: {result}")
 
-    thresholds = range(4050,23000,50)
+    thresholds = range(450,451,50)
 
     dirFile = os.path.join(basevenu, 'dir.tif')
     demFile = os.path.join(basevenu,'Filleddem.tif')
+    stream_oreder_file = os.path.join(basevenu,'stream_order.tif')
 
-    streamVenu = os.path.join(basevenu, 'Stream')  # 存放梯度河网阈值的结果
+    streamVenu = os.path.join(basevenu, 'Stream3')  # 存放梯度河网阈值的结果
 
     params = []
     for threshold in thresholds:
@@ -667,13 +677,13 @@ def sbatch_get_basin_embedding_combination(basevenu):
         if not os.path.exists(outvenu):
             os.mkdir(outvenu)
             os.chmod(outvenu,0o777)
-        params.append([demFile,dirFile,slinkFile,watershedFile,outvenu])
+        params.append([stream_oreder_file,demFile,dirFile,slinkFile,watershedFile,outvenu])
         # sbatch_get_basin_embedding(demFile,dirFile,slinkFile,watershedFile,outvenu)
 
         print("{:s}计算完成".format(Venu))
     po = Pool(30)
     for param in params:
-        po.apply_async(sbatch_get_basin_embedding,(param[0],param[1],param[2],param[3],param[4],),callback=callback)
+        po.apply_async(sbatch_get_basin_embedding,(param[0],param[1],param[2],param[3],param[4],param[5],),callback=callback)
     po.close()
     po.join()
 
@@ -874,12 +884,12 @@ if __name__=='__main__':
     #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\密西西比平原\slink.tif',
     #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\密西西比平原\watershed.tif',
     #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\密西西比平原\venu')
-    sbatch_get_basin_embedding(
-        "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/ablq/Filleddem.tif",
-        "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/ablq/dir.tif",
-        "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/ablq/slink.tif",
-        "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/ablq/watershed.tif",
-        "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/ablq/venu")
+    # sbatch_get_basin_embedding(
+    #     "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/ablq/Filleddem.tif",
+    #     "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/ablq/dir.tif",
+    #     "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/ablq/slink.tif",
+    #     "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/ablq/watershed.tif",
+    #     "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/ablq/venu")
     # # sbatch_get_basin_embedding(
     # #     "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/mssi/Filleddem.tif",
     # #     "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/mssi/dir.tif",
@@ -898,4 +908,8 @@ if __name__=='__main__':
     #     "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/klld/slink.tif",
     #     "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/klld/watershed.tif",
     #     "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/klld/venu")
+
+
+
+    sbatch_get_basin_embedding_combination("/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/ablq")
     pass

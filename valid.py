@@ -195,12 +195,17 @@ def error_matrix(trueStreamFile,streamFile,oringinStreamfile):
     # return [TN,FP,FN,TP]
 
 def sbatch_erroer_matrix(basevenu):
-    thresholds = range(4050,35000,50)
+    '''
+    根据河段数验证精度
+    :param basevenu:
+    :return:
+    '''
+    thresholds = range(450,451,50)
 
-    streamVenu = os.path.join(basevenu, 'Stream')  # 存放梯度河网阈值的结果
+    streamVenu = os.path.join(basevenu, 'Stream2')  # 存放梯度河网阈值的结果
     TstreamFile = os.path.join(basevenu,"visual_stream.tif")  #OSM : "OSM_valid1.tif"   # "visual_stream.tif": NHD  # visual_stream.tif
-    outJson = os.path.join(basevenu, "s_valid_visual_1.csv")
-    outJson1 = os.path.join(basevenu,"c_valid_visual_1.csv")  #    _OSM    _1
+    outJson = os.path.join(basevenu, "s_valid_visual_3_2556.csv")
+    outJson1 = os.path.join(basevenu,"c_valid_visual_3_2556.csv")  #    _OSM    _1
 
     single = []
     combina = []
@@ -234,6 +239,91 @@ def sbatch_erroer_matrix(basevenu):
         writer.writerows(combina)
         f.close()
 
+def error_matrix1(trueStreamFile,streamFile):
+
+    """
+    将prun后的河网与NHD河网进行匹配，记录重叠的栅格数.
+
+    :param trueStreamFile:
+    :param streamFile:
+    :param outFile:
+    :return:
+    """
+
+    Tstream = Raster.get_raster(trueStreamFile)
+    stream = Raster.get_raster(streamFile)
+    proj,geo,tnodata = Raster.get_proj_geo_nodata(trueStreamFile)
+    _,_,s_nodata = Raster.get_proj_geo_nodata(streamFile)
+    row,col = Tstream.shape
+
+    TNum1 = 0   # refind stream的数量
+    TNum2 = 0   # NHD stream 的数量
+    allNum = 0  # 所有的数量
+    TP = 0      # 正确的数量：二者重叠
+    for i in range(row):
+        for j in range(col):
+            if Tstream[i,j] != tnodata or stream[i,j] != s_nodata:
+                allNum += 1
+
+
+            if Tstream[i,j] != tnodata and stream[i,j] != s_nodata:
+                TP += 1
+
+            if stream[i,j] != s_nodata:
+                TNum1 += 1
+
+            if Tstream[i,j] != tnodata:
+                TNum2 += 1
+
+    return [allNum,TP,TNum1,TNum2]
+
+
+
+
+def sbatch_erroer_matrix1(basevenu):
+    '''
+    根据河段重叠验证精度
+    :param basevenu:
+    :return:
+    '''
+    thresholds = range(450,451,50)
+
+    streamVenu = os.path.join(basevenu, 'Stream3')  # 存放梯度河网阈值的结果
+    TstreamFile = os.path.join(basevenu,"visual_stream.tif")  #OSM : "OSM_valid1.tif"   # "visual_stream.tif": NHD  # visual_stream.tif
+    outJson = os.path.join(basevenu, "s_valid_visual_3_2557_intersect.csv")
+    outJson1 = os.path.join(basevenu,"c_valid_visual_3_2557_intersect.csv")  #    _OSM    _1
+
+    single = []
+    combina = []
+    for threshold in thresholds:
+
+        Venu = os.path.join(streamVenu, str(threshold))
+        if not os.path.exists(Venu):
+            continue
+        slinkFile = os.path.join(Venu, 'slink.tif')
+
+        temp_result = error_matrix(TstreamFile,slinkFile,slinkFile)
+        single.append([threshold]+temp_result)
+
+        venu = os.path.join(Venu,"venu")
+        for k in range(-60,60,1):
+
+            combinavenu = os.path.join(venu,str(k))
+            if not os.path.exists(combinavenu):
+                continue
+            c_slink = os.path.join(combinavenu,"modified_link.tif")
+            temp_result2 = error_matrix1(TstreamFile,c_slink)
+            combina.append([threshold,k] + temp_result2)
+        print("{:s}计算完成".format(Venu))
+
+    with open(outJson,'w') as f:
+        writer = csv.writer(f)
+        writer.writerows(single)
+        f.close()
+    with open(outJson1, 'w') as f:
+        writer = csv.writer(f)
+        writer.writerows(combina)
+        f.close()
 
 
 

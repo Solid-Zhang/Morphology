@@ -28,11 +28,11 @@ def extract_stream(acc_file,out_stream_file,threshold):
 
 def sbatch_extract_stream(basevenu):
 
-    thresholds = range(4050,4500,50)
+    thresholds = range(450,451,50)
 
     accFile = os.path.join(basevenu,'acc.tif')
     dirFile = os.path.join(basevenu,'dir.tif')
-    streamVenu = os.path.join(basevenu,'Stream')   # 存放梯度河网阈值的结果
+    streamVenu = os.path.join(basevenu,'Stream3')   # 存放梯度河网阈值的结果
     if not os.path.exists(streamVenu):
         os.mkdir(streamVenu)
         os.chmod(streamVenu,0o777)

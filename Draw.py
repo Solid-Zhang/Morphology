@@ -690,9 +690,9 @@ def heapmap_cosis(c_valid_file,outVenu):
             # # 计算 Kappa
             # Kappa = (po - pe) / (1 - pe)
             #
-            # precision = TP/(TP+redundant)
-            # recall = TP/(TP+notcheck)
-            # F1 = 2*(precision*recall)/(precision+recall)
+            precision = TP/(TP+redundant)
+            recall = TP/(TP+notcheck)
+            F1 = 2*(precision*recall)/(precision+recall)
             #
             # # 剔除的正确冗余和误判TP的调和F1-score
             # correct = (oredundant - redundant)/(notcheck + 1)
@@ -707,7 +707,7 @@ def heapmap_cosis(c_valid_file,outVenu):
             loss = O1/(0.0001+P1)
 
             # 数量CSI
-            NumCSI = TP/(NHDArea+redundant+notcheck)
+            NumCSI = recall#precision#TP/(NHDArea+redundant+notcheck)
 
 
             data[x,y] = NumCSI
@@ -939,17 +939,18 @@ def heapmap_cosis1(c_valid_file,outVenu):
     :param c_valid_file:
     :return:
     """
+    plt.rcParams['font.sans-serif'] = ['Times New Roman']
     # [streamArea, NHDArea, TP, redundant, notcheck]
-    data = np.zeros((4000,120))
-    minValue = 100
+    data = np.zeros((1,120))
+    A = np.zeros((1, 120))
+    B = np.zeros((1, 120))
+    minValue = 450
     onotchecks = {}
     with open(c_valid_file,'r') as f:
         reader = csv.reader(f)
         for i in reader:
-            # x = int(float(i[0])/50-2)   # mssi:-70
-            # x = int(float(i[0])/50-2)   # dkss:-60
-            # x = int(float(i[0]) / 50 - 2)  # klld: -2
-            x = int(float(i[0]) / 50 - 2)  # ablq: -20
+
+            x = int(float(i[0]) / 50 - 9)  # ablq: -20
 
             y = int(float(i[1])) + 60
             # [TN, FP, FN, TP]
@@ -978,37 +979,47 @@ def heapmap_cosis1(c_valid_file,outVenu):
             CSI = TP/(StreamArea+NHDArea - TP)#TP / (redundant + notcheck + TP)
 
             # # 混淆矩阵
-            # confusion_matrix = np.array([[0, redundant_rate], [notcheck_rate, OA_rate]])
-            # # 总样本数
-            # total = np.sum(confusion_matrix)
-            # # 观察一致性
-            # po = np.trace(confusion_matrix) / total
-            # # 每个类别的边际概率
-            # row_marginals = np.sum(confusion_matrix, axis=1) / total
-            # col_marginals = np.sum(confusion_matrix, axis=0) / total
-            # # 预期一致性
-            # pe = np.sum(row_marginals * col_marginals)
-            # # 计算 Kappa
-            # Kappa = (po - pe) / (1 - pe)
-            #
-            # precision = TP/(TP+redundant)
-            # recall = TP/(TP+notcheck)
-            # F1 = 2*(precision*recall)/(precision+recall)
-            #
-            # # 剔除的正确冗余和误判TP的调和F1-score
-            # correct = (oredundant - redundant)/(notcheck + 1)
-            # incorrect = (OTPs - TP)/(notcheck + 1)
-            # F1_scroe = 2*(correct * incorrect) / (1 + correct + incorrect)
-            #
-            # # 损失比
-            # M1 = ostreamArea - StreamArea - notcheck + onotchecks[x]
-            # N1 = M1 + notcheck
-            # O1 = M1/(1+N1)
-            # P1 = notcheck/(1+N1)
-            # loss = O1/(0.0001+P1)
+            confusion_matrix = np.array([[0, redundant_rate], [notcheck_rate, OA_rate]])
+            # 总样本数
+            total = np.sum(confusion_matrix)
+            # 观察一致性
+            po = np.trace(confusion_matrix) / total
+            # 每个类别的边际概率
+            row_marginals = np.sum(confusion_matrix, axis=1) / total
+            col_marginals = np.sum(confusion_matrix, axis=0) / total
+            # 预期一致性
+            pe = np.sum(row_marginals * col_marginals)
+            # 计算 Kappa
+            Kappa = (po - pe) / (1 - pe)
+
+            precision = TP/(TP+redundant)
+            recall = TP/(TP+notcheck)
+            F1 = 2*(precision*recall)/(precision+recall)
+
+            # 剔除的正确冗余和误判TP的调和F1-score
+            correct = (oredundant - redundant)/(notcheck + 1)
+            incorrect = (OTPs - TP)/(notcheck + 1)
+            F1_scroe = 2*(correct * incorrect) / (1 + correct + incorrect)
+
+            # 损失比
+            M1 = ostreamArea - StreamArea - notcheck + onotchecks[x]
+            N1 = M1 + notcheck
+            O1 = M1/(1+N1)
+            P1 = notcheck/(1+N1)
+            loss = O1/(0.0001+P1)
+
+
+            # PR-AUC
+            from sklearn.metrics import auc
+
+            # 假设你已有离散的 precision 和 recall 列表（长度相同）
+
+
+            A[x,y] = precision
+            B[x,y] = recall
 
             # 数量CSI
-            NumCSI = TP/(TP+redundant+notcheck)#TP/(NHDArea+redundant+notcheck)
+            NumCSI = CSI#redundant#TP#TP/(TP+redundant+notcheck)#TP/(NHDArea+redundant+notcheck)
 
 
             data[x,y] = NumCSI
@@ -1016,10 +1027,23 @@ def heapmap_cosis1(c_valid_file,outVenu):
             minValue = min(minValue,cosis_rate)
             # print(i)
         f.close()
+    # PR-AUC
+    from sklearn.metrics import auc
+    precision = np.array(A[0][60:])
+    recall = np.array(B[0][60:])
+    # print(precision,recall)
+    # 1. 按 recall 排序
+    idx = np.argsort(recall)
+    r = recall[idx]
+    p = precision[idx]
+
+    # 2. 用 sklearn 的 auc（对传入的 x=r, y=p 自动做 trapezoidal rule）
+    pr_auc = auc(r, p)
+    print(f"离散点 PR‑AUC = {pr_auc:.4f}")
+
     # data[data == 0] = minValue
     # 数据标准化到0-1范围
-    from sklearn.preprocessing import MinMaxScaler
-    scaler = MinMaxScaler()
+
     # normalized_data = scaler.fit_transform(data)
     # normalized_data[data == 0] = np.nan
 
@@ -1037,24 +1061,13 @@ def heapmap_cosis1(c_valid_file,outVenu):
 
     x_low = []  # 第一个高于首数值的incision
     x_high = []  # 最后一个高于首数值的incision
-    for k in range(7,8): # 20  albq: 0-8    mssi:10-1900  dkss:0-8  klld:5
+    for k in range(0,1):
 
-        # X = range(80)  #   dkss:40
-        # Y = data[k,20:100]      # dkss:20-60
-
-        X = range(80)  # ablq: 55
-        Y = data[k, 20:100]  # ablq: 20-75
-
-        # X = range(80)  #  mssi:100
-        # Y = data[k, 40:120]  #  mssi:0-100
-
-        # X = range(80)  # klld: 55
-        # Y = data[k, 20:100]  # klld: 20-95
+        X = range(120)  # ablq: 55
+        Y = data[k, 0:120]  # ablq: 20-75
         if sum(Y) == 0:
             continue
         X = np.array(X)
-
-
 
 
         data_array = np.array(Y, dtype='float64')  # 转换为浮点数类型
@@ -1086,45 +1099,32 @@ def heapmap_cosis1(c_valid_file,outVenu):
                 x_high.append((kk-20)/100)
                 break
         print(max_x,x_low)
-        plt.plot(x_new,y_spline, label=str((100 + k * 50) * 100 / 1000000), linewidth=2,color=(54 / 255, (200 - (k) * 10) / 255, 255 / 255))  # ablq:1000
-        # plt.plot(x_new,y_spline,label = str((100+k*50)*100/1000000),linewidth = 2 ,color = (54/255,(200-(k)*10)/255,255/255) )   #  dkss:3000
-        # plt.plot(x_new,y_spline, label=str((100 + k * 50) * 100 / 1000000), linewidth=2,color=(54 / 255, (200 - (k) * 30) / 255, 255 / 255))  # klld:100
-        # plt.plot(x_new,y_spline, label=str((100 + k * 50) * 100 / 1000000), linewidth=2,color=(54 / 255, (200 - (k-10) * 1) / 255, 255 / 255))  #   mssi:3500
+        plt.plot(x_new,y_spline, label='CSI based on the number of stream', linewidth=2,color='red')  # ablq:1000
+        # plt.scatter(x_new, y_spline,s = 6,edgecolors='black',facecolors='none')  # 散点图
 
-        # max_x.append((100 + k * 50) * 100 / 1000000)
-        # max_y.append((index - 20) / 100)
-        # plt.scatter(index, maxvalue, color='r')
-        # plt.plot(X,converted,label = str((3000+k*50)*100/1000000),linewidth = 2 ,color = (54/255,(200-(k)*30)/255,255/255) )   #  dkss:3000
-        # plt.plot(X, converted, label=str((3500 + k * 50) * 100 / 1000000), linewidth=2,color=(54 / 255, (200 - (k) * 3) / 255, 255 / 255))  #   mssi:3500
-        # plt.plot(X, converted, label=str((100 + k * 50) * 100 / 1000000), linewidth=2,color=(54 / 255, (200 - (k) * 10) / 255, 255 / 255))  # ablq:1000
-        # plt.plot(X, converted, label=str((100 + k * 50) * 100 / 1000000), linewidth=2,color=(54 / 255, (200 - (k-3) * 30) / 255, 255 / 255))  # klld:100
     # 设置x轴刻度标签为字符型
 
-    # dkss
-    # x_labels = [str((i - 40)/100) for i in range(0, 81, 20)]
-    # plt.xticks([i for i in range(0, 81, 20)], x_labels)  # [1, 2, 3] 对应箱线图的位置
 
-    # mssi
-    # x_labels = [str(i - 60) for i in range(0, 101, 20)]
-    # plt.xticks([i for i in range(0, 101, 20)], x_labels)  # [1, 2, 3] 对应箱线图的位置
+    lengthX = []
+    lengthCSI = []
+    with open(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\ablq\河流等级\c_valid_visual_2_2557_intersect.csv') as f:
+        reader = csv.reader(f)
+        for i in reader:
+            lengthCSI.append(float(i[3])/float(i[2]))
+            lengthX.append((float(i[1]))+60)
 
+        f.close()
+
+
+    plt.plot(lengthX,lengthCSI,label='CSI based on the length of stream',linewidth=2,color='blue')
     # ablq
-    x_labels = [str((i - 40)/100) for i in range(0, 81, 20)]
-    plt.xticks([i for i in range(0, 81, 20)], x_labels)  # [1, 2, 3] 对应箱线图的位置
+    x_labels = [str((i - 60)/100) for i in range(0, 121, 20)]
+    plt.xticks([i for i in range(0, 121, 20)], x_labels)  # [1, 2, 3] 对应箱线图的位置
 
-    # mssi
-    # x_labels = [str((i - 20)/100) for i in range(0, 81, 20)]
-    # plt.xticks([i for i in range(0, 81, 20)], x_labels)  # [1, 2, 3] 对应箱线图的位置
-
-
-    # klld
-    # x_labels = [str((i - 40)/100) for i in range(0, 81, 20)]
-    # plt.xticks([i for i in range(0, 81, 20)], x_labels)  # [1, 2, 3] 对应箱线图的位置
-    # plt.tick_params(axis='both', which='major', labelsize=12)  # 设置x轴和y轴的主刻度标签大小
-
-    plt.legend(title=r'$Accmulation\ value\  / \ km^2$',title_fontsize=10,fontsize=10)
+    # plt.legend(title=r'$Accmulation\ value\  / \ km^2$',title_fontsize=10,fontsize=10)
+    plt.legend(fontsize=14)
     plt.ylabel('CSI',fontsize = 14)
-    plt.xlabel('incision index',fontsize = 14)
+    plt.xlabel('Incision index',fontsize = 14)
     plt.show()
     # plt.savefig(os.path.join(outVenu, "cosis_line.svg"))
     plt.close()
@@ -1135,7 +1135,16 @@ def heapmap_cosis1(c_valid_file,outVenu):
 if __name__=='__main__':
 
 
-    heapmap_cosis(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\论文\图\草图\heatmap\ablq\c_valid_visual_100_500.csv',r'')
+    # heapmap_cosis(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\论文\图\草图\heatmap\ablq\c_valid_visual_100_500.csv',r'')
+    # heapmap_cosis1(
+    #     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\ablq\河流等级\c_valid_visual_2_2556.csv',
+    #     r'')
+    # heapmap_cosis1(
+    #     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\ablq\河流等级\c_valid_visual_1_2556.csv',
+    #     r'')
+    # heapmap_cosis1(
+    #     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\ablq\河流等级\c_valid_visual_3_2556.csv',
+    #     r'')
 
     # Supplent 附图
     # 批量绘制剖面高程图
@@ -1143,10 +1152,10 @@ if __name__=='__main__':
     # sbatch_get_dem()
     # sbatch_draw_3D(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\result\dem',
     #                r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\result\D_profile')
-    # draw_3D_surface(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\result\dem\dem_3234.tif')
-    # get_longest_stream(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\result\dem\dem_3234.tif',
-    #                    r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\result\dir\dir_3234.tif',
-    #                    r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\result\dir\stream_3234.tif')
+    draw_3D_surface(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\result\dem\dem_767.tif')
+    # get_longest_stream(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\result\dem\dem_898.tif',
+    #                    r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\result\dir\dir_898.tif',
+    #                    r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\result\dir\stream_898.tif')
     # Supplent 附图主代码
     # get_longest_stream(
     # r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\论文\图\草图\valid\3472.tif',
@@ -1156,6 +1165,12 @@ if __name__=='__main__':
     # draw_3D_surface_longest_stream(
     #     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\论文\图\草图\valid\3472.tif',
     #     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\result\dir\stream_3472.tif')
+    # draw_3D_surface_longest_stream(
+    #     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\result\dem\dem_3023.tif',
+    #     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\result\dir\stream_3023.tif')
+    # draw_3D_surface_longest_stream(
+    #     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\result\dem\dem_898.tif',
+    #     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\result\dir\stream_898.tif')
 
 
 

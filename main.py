@@ -4,7 +4,7 @@ import Raster
 import single_acc_threshold
 import valid
 from osgeo import gdal
-
+import check
 def OSM(OSMfile,outfile):
 
     OSM = Raster.get_raster(OSMfile)
@@ -82,9 +82,15 @@ if __name__ == '__main__':
 #     # Draw.density("klld","/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/klld")
 #
 #
-    single_acc_threshold.sbatch_extract_stream("/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/ablq")
+    # single_acc_threshold.sbatch_extract_stream("/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/ablq")
     # Judge_by_Surface_Morphology.sbatch_get_basin_embedding_combination("/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/ablq")
-#
+    # valid.sbatch_erroer_matrix("/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/ablq")
+    # valid.sbatch_erroer_matrix1("/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/ablq")
+    # check.check_order_main("/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/ablq")
+    # check.check_order_main2("/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/ablq")
+    check.check_initial_NHD("/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/ablq/visual_stream.tif","/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/ablq/Stream3/450/slink.tif",
+                      "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/ablq/stream_order.tif")
+
     # valid.error_matrix(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\阿巴拉契亚山脉\albq_stream_buffer.tif',
     #                    r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\阿巴拉契亚山脉\venu\15\modified_link.tif')
     # valid.sbatch_erroer_matrix("/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/mssi")
@@ -96,8 +102,8 @@ if __name__ == '__main__':
     # valid.sbatch_erroer_matrix("/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/dkss")
 
     # single_acc_threshold.sbatch_extract_stream("/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/mssi")
-    Judge_by_Surface_Morphology.sbatch_get_basin_embedding_combination("/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/mssi")
-    valid.sbatch_erroer_matrix("/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/mssi")
+    # Judge_by_Surface_Morphology.sbatch_get_basin_embedding_combination("/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/mssi")
+    # valid.sbatch_erroer_matrix("/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/mssi")
 
     # single_acc_threshold.sbatch_extract_stream("/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/klld")
     # Judge_by_Surface_Morphology.sbatch_get_basin_embedding_combination("/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/klld")
