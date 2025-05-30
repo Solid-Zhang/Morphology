@@ -9,7 +9,7 @@ import numpy as np
 import os
 import Raster
 import csv
-
+from osgeo import gdal
 
 
 def error_matrix(trueStreamFile,streamFile,oringinStreamfile):
@@ -202,10 +202,10 @@ def sbatch_erroer_matrix(basevenu):
     '''
     thresholds = range(450,451,50)
 
-    streamVenu = os.path.join(basevenu, 'Stream2')  # 存放梯度河网阈值的结果
+    streamVenu = os.path.join(basevenu, 'Stream3')  # 存放梯度河网阈值的结果
     TstreamFile = os.path.join(basevenu,"visual_stream.tif")  #OSM : "OSM_valid1.tif"   # "visual_stream.tif": NHD  # visual_stream.tif
-    outJson = os.path.join(basevenu, "s_valid_visual_3_2556.csv")
-    outJson1 = os.path.join(basevenu,"c_valid_visual_3_2556.csv")  #    _OSM    _1
+    outJson = os.path.join(basevenu, "s_valid_visual_3_25519.csv")
+    outJson1 = os.path.join(basevenu,"c_valid_visual_3_25519.csv")  #    _OSM    _1
 
     single = []
     combina = []
@@ -220,7 +220,7 @@ def sbatch_erroer_matrix(basevenu):
         single.append([threshold]+temp_result)
 
         venu = os.path.join(Venu,"venu")
-        for k in range(-60,60,1):
+        for k in range(-60,100,1):
 
             combinavenu = os.path.join(venu,str(k))
             if not os.path.exists(combinavenu):
@@ -290,8 +290,8 @@ def sbatch_erroer_matrix1(basevenu):
 
     streamVenu = os.path.join(basevenu, 'Stream3')  # 存放梯度河网阈值的结果
     TstreamFile = os.path.join(basevenu,"visual_stream.tif")  #OSM : "OSM_valid1.tif"   # "visual_stream.tif": NHD  # visual_stream.tif
-    outJson = os.path.join(basevenu, "s_valid_visual_3_2557_intersect.csv")
-    outJson1 = os.path.join(basevenu,"c_valid_visual_3_2557_intersect.csv")  #    _OSM    _1
+    outJson = os.path.join(basevenu, "s_valid_visual_3_25519_intersect.csv")
+    outJson1 = os.path.join(basevenu,"c_valid_visual_3_25519_intersect.csv")  #    _OSM    _1
 
     single = []
     combina = []
@@ -306,7 +306,7 @@ def sbatch_erroer_matrix1(basevenu):
         single.append([threshold]+temp_result)
 
         venu = os.path.join(Venu,"venu")
-        for k in range(-60,60,1):
+        for k in range(-60,100,1):
 
             combinavenu = os.path.join(venu,str(k))
             if not os.path.exists(combinavenu):
@@ -327,15 +327,41 @@ def sbatch_erroer_matrix1(basevenu):
 
 
 
+def reference_stream(rasterStremfile,basestreamfile):
+    """
+    匹配矢量栅格化河网
+    :param rasterStremfile:
+    :param basestreamfile:
+    :return:
+    """
+
+    baseStream = Raster.get_raster(basestreamfile)
+    proj,geo,b_nodata = Raster.get_proj_geo_nodata(basestreamfile)
+
+    rasterStrem = Raster.get_raster(rasterStremfile)
+    proj,geo,r_nodata = Raster.get_proj_geo_nodata(rasterStremfile)
+
+    row,col = baseStream.shape
+
+    result = np.zeros((row,col),dtype = np.int8)
+    for i in range(row):
+        for j in range(col):
+
+            if baseStream[i,j] != b_nodata and rasterStrem[i,j] != r_nodata:
+                result[i,j] = 1
+
+    Raster.save_raster(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\Wabash River Lower Basin\region3\rundata\visual_stream.tif',result,proj,geo,gdal.GDT_Byte,0)
+
 
 
 if __name__ == '__main__':
-    error_matrix(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\验证河网\klld_valid.tif',
-                 r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\科罗拉多高原\venu\0\modified_link.tif',
-                 r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\科罗拉多高原\slink.tif')
+    # error_matrix(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\验证河网\klld_valid.tif',
+    #              r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\科罗拉多高原\venu\0\modified_link.tif',
+    #              r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\科罗拉多高原\slink.tif')
+    #
+    # error_matrix(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\验证河网\klld_valid.tif',
+    #              r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\科罗拉多高原\venu\20\modified_link.tif',
+    #              r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\科罗拉多高原\slink.tif')
 
-    error_matrix(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\验证河网\klld_valid.tif',
-                 r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\科罗拉多高原\venu\20\modified_link.tif',
-                 r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\科罗拉多高原\slink.tif')
-
-
+    reference_stream(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\Wabash River Lower Basin\region3\rundata\visual_stream.tif',
+                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\Wabash River Lower Basin\region3\rundata\stream.tif')

@@ -150,20 +150,21 @@ def Stream_link(Dir_file,Stream_file,Stream_link_file):
                 if now_dir not in dmove_dic:
                     continue
                 next_cell = (i+dmove_dic[now_dir][0],j+dmove_dic[now_dir][1])
-                if Dir[next_cell[0],next_cell[1]] == d_nodata:
-                    node.append((i,j))
+                if 0<= next_cell[0] < row and 0<=next_cell[1]<col:
+                    if Dir[next_cell[0],next_cell[1]] == d_nodata:
+                        node.append((i,j))
 
 
-                up_cells = get_rever_D8(Dir,i,j,d_nodata)
-                if len(up_cells) < 2 :
-                    continue
-                up_stream_cell = []
-                for cell in up_cells:
-                    if Stream[cell[0],cell[1]] != s_nodata:
-                        up_stream_cell.append(cell)
-                if len(up_stream_cell) > 1:
-                    # 是
-                    node += up_stream_cell
+                    up_cells = get_rever_D8(Dir,i,j,d_nodata)
+                    if len(up_cells) < 2 :
+                        continue
+                    up_stream_cell = []
+                    for cell in up_cells:
+                        if Stream[cell[0],cell[1]] != s_nodata:
+                            up_stream_cell.append(cell)
+                    if len(up_stream_cell) > 1:
+                        # 是
+                        node += up_stream_cell
 
     Stream_link = np.zeros((row,col))
     Stream_link[:,:] = -9999
@@ -636,7 +637,7 @@ def sbatch_get_basin_embedding(stream_order_file,DEM_file,Dir_file,Stream_file,w
     if not os.path.exists(venu):
         os.mkdir(venu)
         os.chmod(venu,0o777)
-    incisioninsexs = range(-60,60,1)
+    incisioninsexs = range(-60,100,1)
     for incisioninsex in incisioninsexs:
         outvenu = os.path.join(venu,str(incisioninsex))
         try:
@@ -912,4 +913,5 @@ if __name__=='__main__':
 
 
     sbatch_get_basin_embedding_combination("/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/ablq")
+    sbatch_get_basin_embedding_combination("/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/dkss")
     pass

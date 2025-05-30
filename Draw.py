@@ -933,7 +933,7 @@ def heapmap_cosis(c_valid_file,outVenu):
     else:
         print("单峰数据: 拒绝单峰假设 (p <= 0.05)，可能是多峰。")
 
-def heapmap_cosis1(c_valid_file,outVenu):
+def heapmap_cosis1(c_valid_file,intersect_csv_file,outVenu):
     """
     绘制kappa热图
     :param c_valid_file:
@@ -941,9 +941,9 @@ def heapmap_cosis1(c_valid_file,outVenu):
     """
     plt.rcParams['font.sans-serif'] = ['Times New Roman']
     # [streamArea, NHDArea, TP, redundant, notcheck]
-    data = np.zeros((1,120))
-    A = np.zeros((1, 120))
-    B = np.zeros((1, 120))
+    data = np.zeros((1,160))
+    A = np.zeros((1, 160))
+    B = np.zeros((1, 160))
     minValue = 450
     onotchecks = {}
     with open(c_valid_file,'r') as f:
@@ -1063,8 +1063,8 @@ def heapmap_cosis1(c_valid_file,outVenu):
     x_high = []  # 最后一个高于首数值的incision
     for k in range(0,1):
 
-        X = range(120)  # ablq: 55
-        Y = data[k, 0:120]  # ablq: 20-75
+        X = range(160)  # ablq: 55
+        Y = data[k, 0:160]  # ablq: 20-75
         if sum(Y) == 0:
             continue
         X = np.array(X)
@@ -1107,7 +1107,7 @@ def heapmap_cosis1(c_valid_file,outVenu):
 
     lengthX = []
     lengthCSI = []
-    with open(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\ablq\河流等级\c_valid_visual_2_2557_intersect.csv') as f:
+    with open(intersect_csv_file) as f:
         reader = csv.reader(f)
         for i in reader:
             lengthCSI.append(float(i[3])/float(i[2]))
@@ -1118,8 +1118,8 @@ def heapmap_cosis1(c_valid_file,outVenu):
 
     plt.plot(lengthX,lengthCSI,label='CSI based on the length of stream',linewidth=2,color='blue')
     # ablq
-    x_labels = [str((i - 60)/100) for i in range(0, 121, 20)]
-    plt.xticks([i for i in range(0, 121, 20)], x_labels)  # [1, 2, 3] 对应箱线图的位置
+    x_labels = [str((i - 60)/100) for i in range(0, 161, 20)]
+    plt.xticks([i for i in range(0, 161, 20)], x_labels)  # [1, 2, 3] 对应箱线图的位置
 
     # plt.legend(title=r'$Accmulation\ value\  / \ km^2$',title_fontsize=10,fontsize=10)
     plt.legend(fontsize=14)
@@ -1135,7 +1135,37 @@ def heapmap_cosis1(c_valid_file,outVenu):
 if __name__=='__main__':
 
 
-    # heapmap_cosis(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\论文\图\草图\heatmap\ablq\c_valid_visual_100_500.csv',r'')
+    # heapmap_cosis(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\论文\图\草图\heatmap\ablq\c_valid_visual_100_500.csv',
+    #               r'')
+    # heapmap_cosis1(
+    #     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\论文\图\草图\heatmap\ablq\c_valid_visual_100_500.csv',
+    #               r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\ablq\河流等级\c_valid_visual_2_2557_intersect.csv',
+    #               r'')
+    # heapmap_cosis1(
+    #     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\valley\冲积扇\rundata\c_valid_visual_3_25515.csv',
+    #     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\valley\冲积扇\rundata\c_valid_visual_3_25515_intersect.csv',
+    #     r'')
+
+    # heapmap_cosis1(
+    #     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\mssi_new\Stream3\c_valid_visual_3_25517.csv',
+    #     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\mssi_new\Stream3\c_valid_visual_3_25517_intersect.csv',
+    #     r'')
+    # heapmap_cosis1(
+    #     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\Wabash River Lower Basin\region3\rundata\c_valid_visual_3_25520.csv',
+    #     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\Wabash River Lower Basin\region3\rundata\c_valid_visual_3_25520_intersect.csv',
+    #     r'')
+    # heapmap_cosis1(
+    #     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\Tippecanoe\rundata\c_valid_visual_3_25519.csv',
+    #     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\Tippecanoe\rundata\c_valid_visual_3_25519_intersect.csv',
+    #     r'')
+    # heapmap_cosis1(
+    #     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\Tippecanoe\region2\rundata\c_valid_visual_3_25519.csv',
+    #     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\Tippecanoe\region2\rundata\c_valid_visual_3_25519_intersect.csv',
+    #     r'')
+    # heapmap_cosis1(
+    #     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\德克萨斯丘陵\new_rundata\c_valid_visual_3_25515.csv',
+    #     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\德克萨斯丘陵\new_rundata\c_valid_visual_3_25515_intersect.csv',
+    #     r'')
     # heapmap_cosis1(
     #     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\ablq\河流等级\c_valid_visual_2_2556.csv',
     #     r'')
@@ -1152,7 +1182,7 @@ if __name__=='__main__':
     # sbatch_get_dem()
     # sbatch_draw_3D(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\result\dem',
     #                r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\result\D_profile')
-    draw_3D_surface(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\result\dem\dem_767.tif')
+    # draw_3D_surface(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\result\dem\dem_767.tif')
     # get_longest_stream(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\result\dem\dem_898.tif',
     #                    r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\result\dir\dir_898.tif',
     #                    r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\result\dir\stream_898.tif')
@@ -1171,6 +1201,7 @@ if __name__=='__main__':
     # draw_3D_surface_longest_stream(
     #     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\result\dem\dem_898.tif',
     #     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\result\dir\stream_898.tif')
+
 
 
 
