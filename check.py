@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """
 @Time ： 2025/5/6 9:41
-@Auth ： Bin Zhang
 @File ：check.py
 @IDE ：PyCharm
 
@@ -268,14 +267,5 @@ def check_order_main2(basevenu):
             writer.writerows(result)
             f.close()
 
-
-
-if __name__ == '__main__':
-
-    # draw_check_order(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\ablq\河流等级\check.csv',
-    #                  r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\ablq\河流等级\check2.csv')
-
-    check_initial_NHD("/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/ablq/visual_stream.tif","/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/ablq/Stream3/450/slink.tif",
-                      "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/ablq/stream_order.tif")
 
 

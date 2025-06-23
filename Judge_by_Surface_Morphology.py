@@ -15,16 +15,7 @@ dmove_dic = {1: (0, 1), 2: (1, 1), 4: (1, 0), 8: (1, -1), 16: (0, -1), 32: (-1, 
 
 import whitebox
 wbt = whitebox.WhiteboxTools()
-# # Activate your key
-# whitebox_workflows.activate_license(
-# key="889d88d28f8d90d3c6cfceccd3c6c6c6c6d3c6c6c6c6d3cecdd3cecacacac8d3cbc8cecbc6d3cec8cecacecfc9cccdcdc7c7cd",
-# firstname="Bin",
-# lastname="Zhang",
-# email="zb862578964@gmail.com",
-# agree_to_license_terms=True
-# )
-# # Test your license by setting up the WbW environment
-# wbe = whitebox_workflows.WbEnvironment()
+
 
 def get_rever_D8(dir, row, col,Dir_nodata):
     """
@@ -450,7 +441,7 @@ def type_catchment(csv_file,threshold,watershed_file,output_discriminate_file,wa
 
 def modify_river(stream_order_file,Dir_file,csv_file,threshold,stream_file,venu,watershed_stream_ids=[]):
     """
-    根据判断的结果修正河网。。。。。加入河网等级约束
+    根据判断的结果修正河网
     :param csv_file: 计算的embeddeding
     :param threshold:
     :param stream_file:
@@ -570,7 +561,7 @@ def get_basin_embedding(stream_order_file,DEM_file,Dir_file,Stream_file,watershe
     _,_,dir_nodata=Raster.get_proj_geo_nodata(Dir_file)
 
     # 1、计算类Stream
-    # A=Stream(stream,dem,dir,s_nodata,dir_nodata,venu)
+    A=Stream(stream,dem,dir,s_nodata,dir_nodata,venu)
     # B=A.get_subbemdding()
     # if not os.path.exists(venu):
     #     os.mkdir(venu)
@@ -600,7 +591,7 @@ def get_basin_embedding(stream_order_file,DEM_file,Dir_file,Stream_file,watershe
             os.mkdir(venu)
         incision_file = os.path.join(venu,'incision.csv')
         watershed_file = os.path.join(venu,'watershed.tif')
-        wbt.watershed(Dir_file,Stream_file,watershed_file,True)
+        wbt.watershed(Dir_file,Stream_file,watershed_file,True)   # 计算流域
 
 
         # 2、根据生成的embedding.csv判断subbasin的类型
@@ -682,236 +673,16 @@ def sbatch_get_basin_embedding_combination(basevenu):
         # sbatch_get_basin_embedding(demFile,dirFile,slinkFile,watershedFile,outvenu)
 
         print("{:s}计算完成".format(Venu))
-    po = Pool(30)
+    # po = Pool(3)
     for param in params:
-        po.apply_async(sbatch_get_basin_embedding,(param[0],param[1],param[2],param[3],param[4],param[5],),callback=callback)
-    po.close()
-    po.join()
-
-
-if __name__=='__main__':
-
-
-    # 察隅Acc=300
-    # get_basin_embedding(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\DEM.tif',
-    #                       r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\Dir.tif',
-    #                       r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\Stream2000_link.tif',
-    #                       r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\watershed.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\result')
-    #
-    # cal_watershed_area(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\Acc300\watershed.tif',
-    #                    r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\Acc300\modified_watershed.tif')
-
-
-    # 规范流程
-    # get_basin_embedding(r'E:\察隅野外-202311\察隅采样\察隅流域\DEM\DEM.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\Dir.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\Acc300\StreamLink.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\20240819\Acc300.csv')
-    # 修正后的验证
-    # get_basin_embedding(r'E:\察隅野外-202311\察隅采样\察隅流域\DEM\DEM.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\Dir.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\20240819\modified_stream_link.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\20240819\modified_Acc300.csv')
-
-    # Acc = 1000的情况
-
-    # # 武镇流域
-    # get_basin_embedding(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\武镇\data\Wuzhen_DEM.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\武镇\data\Wuzhen_Dir.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\武镇\data\streamlink.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\武镇\data\watershed.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\武镇\data\Result')
-    #
-    # # 水库
-    # get_basin_embedding(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\水库\data\DEM.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\水库\data\Dir.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\水库\data\streamlink.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\水库\data\watershed.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\水库\data\Result')
-    #
-    # # 喀斯特
-    # get_basin_embedding(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\喀斯特\data\DEM.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\喀斯特\data\Dir.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\喀斯特\data\streamlink.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\喀斯特\data\watershed.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\喀斯特\data\Result')
-
-    # # 高山区
-    # get_basin_embedding(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\DEM.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\Dir.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\streamlink.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\watershed.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\Result')
-
-    # 不同阈值下的高山区河网变化
-    # get_basin_embedding(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\DEM.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\Dir.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\streamlink.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\watershed.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\Result1',-0.2)
-    # get_basin_embedding(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\DEM.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\Dir.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\streamlink.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\watershed.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\Result2', 0.05)
-    # get_basin_embedding(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\DEM.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\Dir.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\streamlink.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\watershed.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\Result3', 0.1)
-    # get_basin_embedding(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\DEM.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\Dir.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\streamlink.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\watershed.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\Result4', 0.25)
-    # get_basin_embedding(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\DEM.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\Dir.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\streamlink.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\watershed.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\Result5', 0.4)
-    # get_basin_embedding(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\DEM.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\Dir.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\streamlink.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\watershed.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\Result6', 0.55)
+        # po.apply_async(sbatch_get_basin_embedding,(param[0],param[1],param[2],param[3],param[4],param[5],),callback=callback)
+        sbatch_get_basin_embedding(param[0], param[1], param[2], param[3], param[4], param[5])
+    # po.close()
+    # po.join()
 
 
 
-    # 迭代结果
-    # # 武镇流域
-    # get_basin_embedding(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\武镇\data\Wuzhen_DEM.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\武镇\data\Wuzhen_Dir.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\武镇\data\streamlink.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\武镇\data\watershed.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\武镇\data\D_Result')
-    #
-    # # 水库
-    # get_basin_embedding(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\水库\data\DEM.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\水库\data\Dir.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\水库\data\streamlink.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\水库\data\watershed.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\水库\data\D_Result')
-    #
-    # # 喀斯特
-    # get_basin_embedding(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\喀斯特\data\DEM.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\喀斯特\data\Dir.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\喀斯特\data\streamlink.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\喀斯特\data\watershed.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\喀斯特\data\D_Result')
-
-    # get_basin_embedding(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\喀斯特\data\DEM.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\喀斯特\data\Dir.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\喀斯特\data\D_Result\modified_link.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\喀斯特\data\D_Result\watershed.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\喀斯特\data\D2_Result', 0.5)
-
-    # # 高山区
-    # get_basin_embedding(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\DEM.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\Dir.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\streamlink.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\watershed.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\D_Result')
-
-    # # 迭代，不同阈值下的高山区河网变化
-    # get_basin_embedding(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\DEM.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\Dir.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\streamlink.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\watershed.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\Result11',0)
-    # get_basin_embedding(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\DEM.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\Dir.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\streamlink.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\watershed.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\Result12', 0.07)
-    # get_basin_embedding(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\DEM.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\Dir.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\streamlink.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\watershed.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\Result13', 0.14)
-    # get_basin_embedding(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\DEM.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\Dir.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\streamlink.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\watershed.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\Result14', 0.21)
-    # get_basin_embedding(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\DEM.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\Dir.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\streamlink.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\watershed.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\Result15', 0.28)
-    # get_basin_embedding(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\DEM.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\Dir.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\streamlink.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\watershed.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\高山区\data\Result16', 0.35)
-
-    # get_basin_embedding(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\DEM.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\run_data\Dir.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\Acc2000\Stream_link.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\Acc2000\watershed.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\察隅验证\Acc2000\Result')
-
-    # get_basin_embedding(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\密西西比平原\missi_Filleddem.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\密西西比平原\missi_dir.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\密西西比平原\slink.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\密西西比平原\watershed.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\密西西比平原\venu', incision_threshold=0.16)
 
 
 
-    # sbatch_get_basin_embedding(
-        # r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\科罗拉多高原\Filleddem.tif',
-        # r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\科罗拉多高原\dir.tif',
-        # r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\科罗拉多高原\slink.tif',
-        # r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\科罗拉多高原\watershed.tif',
-        # r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\科罗拉多高原\venu')
 
-    # sbatch_get_basin_embedding(
-    #     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\德克萨斯丘陵\Filleddem.tif',
-    #     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\德克萨斯丘陵\dir.tif',
-    #     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\德克萨斯丘陵\slink.tif',
-    #     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\德克萨斯丘陵\watershed.tif',
-    #     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\德克萨斯丘陵\venu')
-
-    # sbatch_get_basin_embedding(
-    #     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\阿巴拉契亚山脉\Filleddem.tif',
-    #     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\阿巴拉契亚山脉\dir.tif',
-    #     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\阿巴拉契亚山脉\slink.tif',
-    #     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\阿巴拉契亚山脉\watershed.tif',
-    #     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\阿巴拉契亚山脉\venu')
-
-    # sbatch_get_basin_embedding(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\密西西比平原\missi_Filleddem.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\密西西比平原\missi_dir.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\密西西比平原\slink.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\密西西比平原\watershed.tif',
-    #                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\密西西比平原\venu')
-    # sbatch_get_basin_embedding(
-    #     "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/ablq/Filleddem.tif",
-    #     "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/ablq/dir.tif",
-    #     "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/ablq/slink.tif",
-    #     "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/ablq/watershed.tif",
-    #     "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/ablq/venu")
-    # # sbatch_get_basin_embedding(
-    # #     "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/mssi/Filleddem.tif",
-    # #     "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/mssi/dir.tif",
-    # #     "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/mssi/slink.tif",
-    # #     "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/mssi/watershed.tif",
-    # #     "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/mssi/venu")
-    # sbatch_get_basin_embedding(
-    #     "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/dkss/Filleddem.tif",
-    #     "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/dkss/dir.tif",
-    #     "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/dkss/slink.tif",
-    #     "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/dkss/watershed.tif",
-    #     "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/dkss/venu")
-    # sbatch_get_basin_embedding(
-    #     "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/klld/Filleddem.tif",
-    #     "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/klld/dir.tif",
-    #     "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/klld/slink.tif",
-    #     "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/klld/watershed.tif",
-    #     "/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/klld/venu")
-
-
-
-    sbatch_get_basin_embedding_combination("/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/ablq")
-    sbatch_get_basin_embedding_combination("/datanode05/zhangbin/hillslope_and_subbasin/DATA/NHD/dkss")
-    pass

@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """
 @Time ： 2025/1/6 15:02
-@Auth ： Bin Zhang
 @File ：single_acc_threshold.py
 @IDE ：PyCharm
 """
@@ -28,7 +27,9 @@ def extract_stream(acc_file,out_stream_file,threshold):
 
 def sbatch_extract_stream(basevenu):
 
-    thresholds = range(450,451,50)
+
+    thresholds = range(450, 451, 50)
+
 
     accFile = os.path.join(basevenu,'acc.tif')
     dirFile = os.path.join(basevenu,'dir.tif')

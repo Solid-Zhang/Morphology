@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """
 @Time ： 2025/1/6 16:31
-@Auth ： Bin Zhang
 @File ：valid.py
 @IDE ：PyCharm
 """
@@ -17,7 +16,7 @@ def error_matrix(trueStreamFile,streamFile,oringinStreamfile):
     """
     将prun后的河网与NHD河网进行匹配，记录各分类类别的数量，构建误差矩阵.
     1）若河流cell数量落在某河段超过10个，则认为是重合，TP；
-    2）
+
     :param trueStreamFile:
     :param streamFile:
     :param outFile:
@@ -203,9 +202,9 @@ def sbatch_erroer_matrix(basevenu):
     thresholds = range(450,451,50)
 
     streamVenu = os.path.join(basevenu, 'Stream3')  # 存放梯度河网阈值的结果
-    TstreamFile = os.path.join(basevenu,"visual_stream.tif")  #OSM : "OSM_valid1.tif"   # "visual_stream.tif": NHD  # visual_stream.tif
-    outJson = os.path.join(basevenu, "s_valid_visual_3_25519.csv")
-    outJson1 = os.path.join(basevenu,"c_valid_visual_3_25519.csv")  #    _OSM    _1
+    TstreamFile = os.path.join(basevenu,"visual_stream.tif")    # "visual_stream.tif": NHD  # visual_stream.tif
+    # outJson = os.path.join(basevenu, "s_valid_visual_3_25519.csv")
+    outJson1 = os.path.join(basevenu,"c_valid_visual_number.csv")  #    _OSM    _1
 
     single = []
     combina = []
@@ -230,10 +229,10 @@ def sbatch_erroer_matrix(basevenu):
             combina.append([threshold,k] + temp_result2)
         print("{:s}计算完成".format(Venu))
 
-    with open(outJson,'w') as f:
-        writer = csv.writer(f)
-        writer.writerows(single)
-        f.close()
+    # with open(outJson,'w') as f:
+    #     writer = csv.writer(f)
+    #     writer.writerows(single)
+    #     f.close()
     with open(outJson1, 'w') as f:
         writer = csv.writer(f)
         writer.writerows(combina)
@@ -277,9 +276,6 @@ def error_matrix1(trueStreamFile,streamFile):
 
     return [allNum,TP,TNum1,TNum2]
 
-
-
-
 def sbatch_erroer_matrix1(basevenu):
     '''
     根据河段重叠验证精度
@@ -290,8 +286,8 @@ def sbatch_erroer_matrix1(basevenu):
 
     streamVenu = os.path.join(basevenu, 'Stream3')  # 存放梯度河网阈值的结果
     TstreamFile = os.path.join(basevenu,"visual_stream.tif")  #OSM : "OSM_valid1.tif"   # "visual_stream.tif": NHD  # visual_stream.tif
-    outJson = os.path.join(basevenu, "s_valid_visual_3_25519_intersect.csv")
-    outJson1 = os.path.join(basevenu,"c_valid_visual_3_25519_intersect.csv")  #    _OSM    _1
+    # outJson = os.path.join(basevenu, "s_valid_visual_3_25519_intersect.csv")
+    outJson1 = os.path.join(basevenu,"c_valid_visual_length.csv")  #    _OSM    _1
 
     single = []
     combina = []
@@ -316,10 +312,10 @@ def sbatch_erroer_matrix1(basevenu):
             combina.append([threshold,k] + temp_result2)
         print("{:s}计算完成".format(Venu))
 
-    with open(outJson,'w') as f:
-        writer = csv.writer(f)
-        writer.writerows(single)
-        f.close()
+    # with open(outJson,'w') as f:
+    #     writer = csv.writer(f)
+    #     writer.writerows(single)
+    #     f.close()
     with open(outJson1, 'w') as f:
         writer = csv.writer(f)
         writer.writerows(combina)
@@ -327,41 +323,29 @@ def sbatch_erroer_matrix1(basevenu):
 
 
 
-def reference_stream(rasterStremfile,basestreamfile):
-    """
-    匹配矢量栅格化河网
-    :param rasterStremfile:
-    :param basestreamfile:
-    :return:
-    """
+# def reference_stream(rasterStremfile,basestreamfile):
+#     """
+#     匹配矢量栅格化河网
+#     :param rasterStremfile:
+#     :param basestreamfile:
+#     :return:
+#     """
+#
+#     baseStream = Raster.get_raster(basestreamfile)
+#     proj,geo,b_nodata = Raster.get_proj_geo_nodata(basestreamfile)
+#
+#     rasterStrem = Raster.get_raster(rasterStremfile)
+#     proj,geo,r_nodata = Raster.get_proj_geo_nodata(rasterStremfile)
+#
+#     row,col = baseStream.shape
+#
+#     result = np.zeros((row,col),dtype = np.int8)
+#     for i in range(row):
+#         for j in range(col):
+#
+#             if baseStream[i,j] != b_nodata and rasterStrem[i,j] != r_nodata:
+#                 result[i,j] = 1
+#
+#     Raster.save_raster(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\Wabash River Lower Basin\region3\rundata\visual_stream.tif',result,proj,geo,gdal.GDT_Byte,0)
 
-    baseStream = Raster.get_raster(basestreamfile)
-    proj,geo,b_nodata = Raster.get_proj_geo_nodata(basestreamfile)
 
-    rasterStrem = Raster.get_raster(rasterStremfile)
-    proj,geo,r_nodata = Raster.get_proj_geo_nodata(rasterStremfile)
-
-    row,col = baseStream.shape
-
-    result = np.zeros((row,col),dtype = np.int8)
-    for i in range(row):
-        for j in range(col):
-
-            if baseStream[i,j] != b_nodata and rasterStrem[i,j] != r_nodata:
-                result[i,j] = 1
-
-    Raster.save_raster(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\Wabash River Lower Basin\region3\rundata\visual_stream.tif',result,proj,geo,gdal.GDT_Byte,0)
-
-
-
-if __name__ == '__main__':
-    # error_matrix(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\验证河网\klld_valid.tif',
-    #              r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\科罗拉多高原\venu\0\modified_link.tif',
-    #              r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\科罗拉多高原\slink.tif')
-    #
-    # error_matrix(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\验证河网\klld_valid.tif',
-    #              r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\科罗拉多高原\venu\20\modified_link.tif',
-    #              r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\科罗拉多高原\slink.tif')
-
-    reference_stream(r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\Wabash River Lower Basin\region3\rundata\visual_stream.tif',
-                     r'F:\专利申请\一种考虑地表形态特征的子流域与坡面判别方法\DATA\研究区\NHD\Wabash River Lower Basin\region3\rundata\stream.tif')
